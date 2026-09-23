@@ -1,0 +1,17 @@
+# Python 3.11–3.13 (Docker image: 3.12). Top-level dependencies are pinned.
+numpy==2.5.3; python_version >= "3.12"
+numpy==2.4.6; python_version < "3.12"
+pandas==3.0.6
+pyarrow==25.0.1
+scikit-learn==1.9.1
+requests==2.34.2
+pydantic==2.13.5
+PyYAML==6.0.3
+python-dotenv==1.2.3
+openai==3.19.0
+streamlit==1.64.0
+plotly==7.1.0
+matplotlib==3.11.2
+pytest==9.1.1
+# the project package itself (src/windagent)
+-e .

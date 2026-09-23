@@ -1,0 +1,9 @@
+* text=auto
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.py text eol=lf
+*.ps1 text eol=crlf
+# Data files are stored byte-for-byte
+data/** -text
+*.parquet binary
+*.png binary

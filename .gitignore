@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+build/
+dist/
+
+# Secrets — never commit
+.env
+.streamlit/secrets.toml
+
+# Local / scratch
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Runtime state written by the app
+outputs/**/.ratelimit.json
+outputs/**/live/

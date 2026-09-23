@@ -1,0 +1,21 @@
+# Sites and turbines. Adding a turbine or a site is a config change, not a code change.
+sites:
+  shelek:
+    name: "Shelek WPP (Almaty region, Kazakhstan)"
+    # The SCADA logger clock is a FIXED UTC+6. It did not follow Kazakhstan's
+    # 2024-03-01 switch to UTC+5 (verified: see `python -m windagent detect-clock`).
+    data_clock_utc_offset_h: 6
+    official_utc_offset_h: 5
+    rated_mw: null            # set to the farm's capacity to also get MW outputs
+    test_period:
+      start: "2026-02-01"
+      end: "2026-02-28"
+    turbines:
+      - id: t1
+        lat: 43.645150
+        lon: 78.535604
+        scada_csv: raw/turbine_1.csv
+      - id: t2
+        lat: 43.643198
+        lon: 78.538828
+        scada_csv: raw/turbine_2.csv
