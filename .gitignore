@@ -22,3 +22,6 @@ Thumbs.db
 # Runtime state written by the app
 outputs/**/.ratelimit.json
 outputs/**/live/
+
+# fold models from validation are rebuilt on demand
+models/**/model_cutoff_*.pkl
