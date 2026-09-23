@@ -88,6 +88,7 @@ class LLMPolicy:
 
     def _loop(self, state: RunState, tracer, stop_on_publish: bool = True) -> bool:
         published = False
+        nudged = False
         for _ in range(MAX_STEPS):
             kwargs = dict(model=self.model, messages=self.messages, tools=self.tools, tool_choice="auto")
             if self._temperature_ok:
@@ -113,7 +114,16 @@ class LLMPolicy:
             if msg.content:
                 tracer.emit("llm_message", msg.content.strip()[:1500])
             if not calls:
-                return published
+                text = (msg.content or "").strip()
+                if published or nudged or text.upper().startswith("KEEP"):
+                    return published
+                # the model answered in prose instead of acting: nudge once to act or to decide explicitly
+                nudged = True
+                self.messages.append({"role": "user", "content": (
+                    "You replied without calling any tool. If you decided to (re)compute, call the tools now "
+                    "(validate_weather → run_forecast → analyze_forecast → publish_forecast). If you decided to keep the "
+                    "current version, reply with KEEP followed by your reason.")})
+                continue
             for c in calls:
                 try:
                     args = json.loads(c.function.arguments or "{}")

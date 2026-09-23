@@ -183,7 +183,7 @@ def run_issue(site: str, issue_time_data_clock: str, policy: str = "auto", on_ev
             tracer.emit("plan", f"Clock advances to {state.dc(as_of)}: checking for newer weather runs.")
             chain_u = [p for p in chain if p is used] + [RulesPolicy()] if used.name != "rules" else [RulesPolicy()]
             _run_phase("update", chain_u, state, tracer)
-    errors = _posthoc_errors(state) if kind == "runs" else None
+    errors = _posthoc_errors(state) if kind in ("runs", "adhoc") else None
     tracer.emit("run_end", f"Published {len(state.versions)} version(s).", data={"versions": len(state.versions)})
     _write_outputs(state, tracer, used, errors)
     from .. import api

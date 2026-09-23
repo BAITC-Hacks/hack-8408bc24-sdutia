@@ -3,7 +3,7 @@
   "issue_id": "2026-02-08_0000",
   "issue_time_utc": "2026-02-07T18:00:00Z",
   "issue_time_data_clock": "2026-02-08 00:00",
-  "created_at_utc": "2026-09-23T10:07:33Z",
+  "created_at_utc": "2026-09-23T10:50:18Z",
   "policy": "llm",
   "provider": "openai",
   "model": "gpt-5.4-mini",
@@ -12,12 +12,90 @@
     {
       "version": 1,
       "as_of_utc": "2026-02-07T18:00:00Z",
-      "reason": "initial"
+      "reason": "initial",
+      "models_used": [
+        "ecmwf_aifs025_single",
+        "ecmwf_ifs025",
+        "gfs_seamless",
+        "icon_seamless"
+      ],
+      "runs_used": {
+        "ecmwf_aifs025_single": [
+          "2026-02-06T12:00:00Z",
+          "2026-02-06T18:00:00Z",
+          "2026-02-07T00:00:00Z",
+          "2026-02-07T06:00:00Z"
+        ],
+        "ecmwf_ifs025": [
+          "2026-02-06T12:00:00Z",
+          "2026-02-06T18:00:00Z",
+          "2026-02-07T00:00:00Z",
+          "2026-02-07T06:00:00Z"
+        ],
+        "gfs_seamless": [
+          "2026-02-06T12:00:00Z",
+          "2026-02-06T18:00:00Z",
+          "2026-02-07T00:00:00Z",
+          "2026-02-07T06:00:00Z"
+        ],
+        "icon_seamless": [
+          "2026-02-06T18:00:00Z",
+          "2026-02-07T00:00:00Z",
+          "2026-02-07T06:00:00Z",
+          "2026-02-07T12:00:00Z"
+        ]
+      },
+      "kpis": {
+        "energy_norm_h": 37.87,
+        "capacity_factor": 0.789,
+        "max_ramp_3h": 0.857,
+        "mean_band_width": 0.297,
+        "confidence": "medium"
+      }
     },
     {
       "version": 2,
       "as_of_utc": "2026-02-08T00:00:00Z",
-      "reason": "new runs: ecmwf_aifs025_single 2026-02-07T12:00:00Z, ecmwf_ifs025 2026-02-07T12:00:00Z, icon_seamless 2026-02-07T18:00:00Z, gfs_seamless 2026-02-07T12:00:00Z"
+      "reason": "newer runs for ecmwf_aifs025_single (28% of hours, run 2026-02-07 18:00), ecmwf_ifs025 (28% of hours, run 2026-02-07 18:00), gfs_seamless (28% of hours, run 2026-02-07 18:00), icon_seamless (16% of hours, run 2026-02-08 00:00)",
+      "models_used": [
+        "ecmwf_aifs025_single",
+        "ecmwf_ifs025",
+        "gfs_seamless",
+        "icon_seamless"
+      ],
+      "runs_used": {
+        "ecmwf_aifs025_single": [
+          "2026-02-06T18:00:00Z",
+          "2026-02-07T00:00:00Z",
+          "2026-02-07T06:00:00Z",
+          "2026-02-07T12:00:00Z"
+        ],
+        "ecmwf_ifs025": [
+          "2026-02-06T18:00:00Z",
+          "2026-02-07T00:00:00Z",
+          "2026-02-07T06:00:00Z",
+          "2026-02-07T12:00:00Z"
+        ],
+        "gfs_seamless": [
+          "2026-02-06T18:00:00Z",
+          "2026-02-07T00:00:00Z",
+          "2026-02-07T06:00:00Z",
+          "2026-02-07T12:00:00Z"
+        ],
+        "icon_seamless": [
+          "2026-02-07T00:00:00Z",
+          "2026-02-07T06:00:00Z",
+          "2026-02-07T12:00:00Z",
+          "2026-02-07T18:00:00Z"
+        ]
+      },
+      "kpis": {
+        "energy_norm_h": 32.58,
+        "capacity_factor": 0.776,
+        "max_ramp_3h": 0.857,
+        "mean_band_width": 0.271,
+        "confidence": "medium"
+      }
     }
   ],
   "models_used": [
@@ -58,12 +136,12 @@
   "nowcast": null,
   "warnings": [],
   "kpis": {
-    "energy_norm_h": 32.63,
-    "capacity_factor": 0.777,
-    "max_ramp_3h": 0.867,
-    "mean_band_width": 0.276,
+    "energy_norm_h": 32.58,
+    "capacity_factor": 0.776,
+    "max_ramp_3h": 0.857,
+    "mean_band_width": 0.271,
     "confidence": "medium",
-    "revision_mae_v2_vs_v1": 0.0102
+    "revision_mae_v2_vs_v1": 0.0055
   },
   "actuals_available": false,
   "errors": null

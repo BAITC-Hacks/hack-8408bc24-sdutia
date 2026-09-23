@@ -202,6 +202,20 @@ def _cmd_verify(args) -> int:
     return 0 if all(ok for _, ok, _ in results) else 1
 
 
+def _cmd_provenance(args) -> int:
+    from .provenance import run
+
+    r = run(args.site)
+    for x in r["latency"]:
+        print(f"{x['model']:<22} measured delay {x['measured_delay_h']:>5} h | configured {x['configured_latency_h']} h | "
+              f"margin {x['margin_h']:+} h | {'OK' if x['ok'] else 'TOO SMALL'}")
+    s = r["previous_runs_semantics"]
+    print(f"previous_dayN semantics ({s['model']}, {s['day']}): {s['values_matching']}/{s['values_checked']} values match "
+          f"'{s['rule']}' -> {'OK' if s['ok'] else 'MISMATCH'}")
+    print("written: outputs/provenance/provenance.json")
+    return 0 if all(x["ok"] for x in r["latency"]) and s["ok"] else 1
+
+
 def _cmd_compare(args) -> int:
     from .report import compare
 
@@ -247,6 +261,7 @@ def build_parser() -> argparse.ArgumentParser:
     add("detect-clock", "SCADA clock-offset forensics", _cmd_detect_clock)
     add("report", "write the generated metrics block into README.md / README.en.md", _cmd_report)
     add("verify", "run all checks locally: tests, reproduce the submission, schema, clock", _cmd_verify)
+    add("provenance", "re-measure weather publication delays and the archive's run mapping (needs internet)", _cmd_provenance)
     sp = sub.add_parser("compare", help="compare two submission CSVs (CI reproducibility check)")
     sp.add_argument("a")
     sp.add_argument("b")
