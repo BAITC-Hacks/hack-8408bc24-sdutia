@@ -17,8 +17,8 @@ def display_times(values, offset: int) -> pd.Series:
 def styled(fig: go.Figure, clock_label: str = "", height: int = 385) -> go.Figure:
     fig.update_layout(template="plotly_white", height=height, paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Arial, sans-serif", color=INK, size=12),
-        margin=dict(l=12, r=20, t=38, b=35), hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.03, x=0),
+        margin=dict(l=12, r=20, t=38, b=110), hovermode="x unified",
+        legend=dict(orientation="h", yanchor="top", y=-0.25, x=0),
         xaxis=dict(title=clock_label, showgrid=False, type="date"), yaxis=dict(gridcolor="#DFE8E4", zeroline=False))
     return fig
 

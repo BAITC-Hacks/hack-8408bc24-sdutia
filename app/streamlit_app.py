@@ -23,7 +23,8 @@ st.markdown("""<style>
   h1 {letter-spacing:-1.4px;font-weight:650!important;font-size:2.5rem!important;}
   h2,h3 {letter-spacing:-.45px;}
   [data-testid="stMetric"] {background:#fff;padding:18px 20px;border:1px solid #DDE7E2;border-radius:12px;}
-  [data-testid="stMetricValue"] {font-size:1.85rem;font-weight:600;}
+  [data-testid="stMetricValue"] {font-size:clamp(1rem,2.2vw,1.75rem);font-weight:600;}
+  [data-testid="stMetricValue"], [data-testid="stMetricValue"] div {white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:anywhere;}
   [data-testid="stMetricLabel"] {color:#60766E;font-size:.8rem;}
   [data-testid="stMetricLabel"] p {white-space:normal;overflow:visible;text-overflow:clip;min-height:2.6em;}
   [data-testid="stVerticalBlockBorderWrapper"] {border-radius:12px;}
