@@ -1,6 +1,6 @@
 {
   "site": "shelek",
-  "generated_at_utc": "2026-09-23T09:57:54Z",
+  "generated_at_utc": "2026-09-23T10:44:42Z",
   "validation": {
     "folds": [
       "2025-10",
@@ -19,10 +19,10 @@
   "by_product": {
     "intraday": {
       "model": {
-        "mae": 0.1589,
-        "rmse": 0.217,
-        "bias": 0.0315,
-        "r2": 0.6397,
+        "mae": 0.1566,
+        "rmse": 0.2163,
+        "bias": 0.0282,
+        "r2": 0.6421,
         "n": 2893
       },
       "persistence": {
@@ -45,14 +45,21 @@
         "bias": 0.0183,
         "r2": 0.5866,
         "n": 2893
+      },
+      "model_with_nowcast": {
+        "mae": 0.153,
+        "rmse": 0.2121,
+        "bias": 0.0276,
+        "r2": 0.6559,
+        "n": 2893
       }
     },
     "day_ahead": {
       "model": {
-        "mae": 0.169,
-        "rmse": 0.2285,
-        "bias": 0.0274,
-        "r2": 0.597,
+        "mae": 0.168,
+        "rmse": 0.2281,
+        "bias": 0.0247,
+        "r2": 0.5983,
         "n": 2869
       },
       "persistence": {
@@ -81,19 +88,19 @@
   "by_product_available_hours_only": {
     "intraday": {
       "model": {
-        "mae": 0.1585,
-        "rmse": 0.2165,
-        "bias": 0.0305,
-        "r2": 0.6427,
+        "mae": 0.1563,
+        "rmse": 0.2158,
+        "bias": 0.0273,
+        "r2": 0.6447,
         "n": 2876
       }
     },
     "day_ahead": {
       "model": {
-        "mae": 0.1689,
-        "rmse": 0.2284,
-        "bias": 0.0266,
-        "r2": 0.5987,
+        "mae": 0.168,
+        "rmse": 0.2281,
+        "bias": 0.024,
+        "r2": 0.5997,
         "n": 2852
       }
     }
@@ -101,336 +108,336 @@
   "by_lead": [
     {
       "lead_h": 0,
-      "model": 0.1452,
+      "model": 0.1429,
       "persistence": 0.0934,
       "climatology": 0.2961,
       "nwp_powercurve": 0.18
     },
     {
       "lead_h": 1,
-      "model": 0.152,
+      "model": 0.1501,
       "persistence": 0.1346,
       "climatology": 0.2855,
       "nwp_powercurve": 0.1758
     },
     {
       "lead_h": 2,
-      "model": 0.1554,
+      "model": 0.1519,
       "persistence": 0.1848,
       "climatology": 0.2898,
       "nwp_powercurve": 0.1668
     },
     {
       "lead_h": 3,
-      "model": 0.1699,
+      "model": 0.1658,
       "persistence": 0.2195,
       "climatology": 0.3178,
       "nwp_powercurve": 0.174
     },
     {
       "lead_h": 4,
-      "model": 0.1501,
+      "model": 0.1446,
       "persistence": 0.2575,
       "climatology": 0.3127,
       "nwp_powercurve": 0.1684
     },
     {
       "lead_h": 5,
-      "model": 0.1451,
+      "model": 0.1377,
       "persistence": 0.2709,
       "climatology": 0.3169,
       "nwp_powercurve": 0.1666
     },
     {
       "lead_h": 6,
-      "model": 0.1548,
+      "model": 0.1448,
       "persistence": 0.306,
       "climatology": 0.3268,
       "nwp_powercurve": 0.1648
     },
     {
       "lead_h": 7,
-      "model": 0.1567,
+      "model": 0.1482,
       "persistence": 0.305,
       "climatology": 0.3179,
       "nwp_powercurve": 0.1762
     },
     {
       "lead_h": 8,
-      "model": 0.1674,
+      "model": 0.1613,
       "persistence": 0.3087,
       "climatology": 0.3214,
       "nwp_powercurve": 0.1805
     },
     {
       "lead_h": 9,
-      "model": 0.1678,
+      "model": 0.1648,
       "persistence": 0.2949,
       "climatology": 0.3273,
       "nwp_powercurve": 0.1929
     },
     {
       "lead_h": 10,
-      "model": 0.1615,
+      "model": 0.1618,
       "persistence": 0.3057,
       "climatology": 0.3514,
       "nwp_powercurve": 0.1846
     },
     {
       "lead_h": 11,
-      "model": 0.1475,
+      "model": 0.1468,
       "persistence": 0.335,
       "climatology": 0.375,
       "nwp_powercurve": 0.1853
     },
     {
       "lead_h": 12,
-      "model": 0.1434,
+      "model": 0.1418,
       "persistence": 0.358,
       "climatology": 0.3645,
       "nwp_powercurve": 0.1807
     },
     {
       "lead_h": 13,
-      "model": 0.1438,
+      "model": 0.1454,
       "persistence": 0.3615,
       "climatology": 0.3618,
       "nwp_powercurve": 0.183
     },
     {
       "lead_h": 14,
-      "model": 0.1422,
+      "model": 0.1433,
       "persistence": 0.3601,
       "climatology": 0.3521,
       "nwp_powercurve": 0.1975
     },
     {
       "lead_h": 15,
-      "model": 0.1327,
+      "model": 0.1333,
       "persistence": 0.3616,
       "climatology": 0.3447,
       "nwp_powercurve": 0.189
     },
     {
       "lead_h": 16,
-      "model": 0.1469,
+      "model": 0.1507,
       "persistence": 0.3436,
       "climatology": 0.3353,
       "nwp_powercurve": 0.1841
     },
     {
       "lead_h": 17,
-      "model": 0.172,
+      "model": 0.1701,
       "persistence": 0.338,
       "climatology": 0.343,
       "nwp_powercurve": 0.1956
     },
     {
       "lead_h": 18,
-      "model": 0.1802,
+      "model": 0.1836,
       "persistence": 0.3343,
       "climatology": 0.3184,
       "nwp_powercurve": 0.1933
     },
     {
       "lead_h": 19,
-      "model": 0.1952,
+      "model": 0.195,
       "persistence": 0.3508,
       "climatology": 0.3221,
       "nwp_powercurve": 0.2061
     },
     {
       "lead_h": 20,
-      "model": 0.1719,
+      "model": 0.1741,
       "persistence": 0.3456,
       "climatology": 0.3132,
       "nwp_powercurve": 0.1863
     },
     {
       "lead_h": 21,
-      "model": 0.172,
+      "model": 0.1678,
       "persistence": 0.3375,
       "climatology": 0.302,
       "nwp_powercurve": 0.1836
     },
     {
       "lead_h": 22,
-      "model": 0.1726,
+      "model": 0.1683,
       "persistence": 0.3305,
       "climatology": 0.3156,
       "nwp_powercurve": 0.1745
     },
     {
       "lead_h": 23,
-      "model": 0.1659,
+      "model": 0.1642,
       "persistence": 0.3472,
       "climatology": 0.3064,
       "nwp_powercurve": 0.1798
     },
     {
       "lead_h": 24,
-      "model": 0.1591,
+      "model": 0.1613,
       "persistence": 0.3532,
       "climatology": 0.2988,
       "nwp_powercurve": 0.1825
     },
     {
       "lead_h": 25,
-      "model": 0.1658,
+      "model": 0.1615,
       "persistence": 0.3396,
       "climatology": 0.2888,
       "nwp_powercurve": 0.1739
     },
     {
       "lead_h": 26,
-      "model": 0.1671,
+      "model": 0.1561,
       "persistence": 0.3316,
       "climatology": 0.2905,
       "nwp_powercurve": 0.1702
     },
     {
       "lead_h": 27,
-      "model": 0.1797,
+      "model": 0.175,
       "persistence": 0.3328,
       "climatology": 0.3197,
       "nwp_powercurve": 0.1736
     },
     {
       "lead_h": 28,
-      "model": 0.1542,
+      "model": 0.1465,
       "persistence": 0.3314,
       "climatology": 0.3131,
       "nwp_powercurve": 0.1718
     },
     {
       "lead_h": 29,
-      "model": 0.1582,
+      "model": 0.1517,
       "persistence": 0.3419,
       "climatology": 0.3152,
       "nwp_powercurve": 0.1724
     },
     {
       "lead_h": 30,
-      "model": 0.1645,
+      "model": 0.1611,
       "persistence": 0.356,
       "climatology": 0.3252,
       "nwp_powercurve": 0.1745
     },
     {
       "lead_h": 31,
-      "model": 0.1656,
+      "model": 0.1644,
       "persistence": 0.3695,
       "climatology": 0.3166,
       "nwp_powercurve": 0.1838
     },
     {
       "lead_h": 32,
-      "model": 0.1742,
+      "model": 0.1695,
       "persistence": 0.3701,
       "climatology": 0.3199,
       "nwp_powercurve": 0.188
     },
     {
       "lead_h": 33,
-      "model": 0.1715,
+      "model": 0.1713,
       "persistence": 0.3825,
       "climatology": 0.3253,
       "nwp_powercurve": 0.1922
     },
     {
       "lead_h": 34,
-      "model": 0.1687,
+      "model": 0.1711,
       "persistence": 0.3832,
       "climatology": 0.3505,
       "nwp_powercurve": 0.1876
     },
     {
       "lead_h": 35,
-      "model": 0.16,
+      "model": 0.1581,
       "persistence": 0.3808,
       "climatology": 0.3746,
       "nwp_powercurve": 0.1898
     },
     {
       "lead_h": 36,
-      "model": 0.1581,
+      "model": 0.1574,
       "persistence": 0.397,
       "climatology": 0.3643,
       "nwp_powercurve": 0.1933
     },
     {
       "lead_h": 37,
-      "model": 0.1471,
+      "model": 0.151,
       "persistence": 0.3969,
       "climatology": 0.3613,
       "nwp_powercurve": 0.1965
     },
     {
       "lead_h": 38,
-      "model": 0.1494,
+      "model": 0.1519,
       "persistence": 0.4063,
       "climatology": 0.3513,
       "nwp_powercurve": 0.2088
     },
     {
       "lead_h": 39,
-      "model": 0.1465,
+      "model": 0.1453,
       "persistence": 0.4075,
       "climatology": 0.344,
       "nwp_powercurve": 0.1998
     },
     {
       "lead_h": 40,
-      "model": 0.158,
+      "model": 0.1621,
       "persistence": 0.4026,
       "climatology": 0.3342,
       "nwp_powercurve": 0.1979
     },
     {
       "lead_h": 41,
-      "model": 0.1708,
+      "model": 0.1735,
       "persistence": 0.393,
       "climatology": 0.3416,
       "nwp_powercurve": 0.2046
     },
     {
       "lead_h": 42,
-      "model": 0.186,
+      "model": 0.1886,
       "persistence": 0.3875,
       "climatology": 0.3164,
       "nwp_powercurve": 0.2026
     },
     {
       "lead_h": 43,
-      "model": 0.2147,
+      "model": 0.2211,
       "persistence": 0.3667,
       "climatology": 0.3198,
       "nwp_powercurve": 0.217
     },
     {
       "lead_h": 44,
-      "model": 0.2018,
+      "model": 0.2012,
       "persistence": 0.3617,
       "climatology": 0.3113,
       "nwp_powercurve": 0.1979
     },
     {
       "lead_h": 45,
-      "model": 0.179,
+      "model": 0.1736,
       "persistence": 0.3591,
       "climatology": 0.2992,
       "nwp_powercurve": 0.1887
     },
     {
       "lead_h": 46,
-      "model": 0.1739,
+      "model": 0.1738,
       "persistence": 0.3424,
       "climatology": 0.3132,
       "nwp_powercurve": 0.1859
     },
     {
       "lead_h": 47,
-      "model": 0.1815,
+      "model": 0.1845,
       "persistence": 0.3395,
       "climatology": 0.3044,
       "nwp_powercurve": 0.193
@@ -438,55 +445,85 @@
   ],
   "intervals": {
     "day_ahead": {
-      "coverage_p10_p90": 0.72,
-      "mean_width": 0.455
+      "coverage_p10_p90": 0.716,
+      "mean_width": 0.441
     }
   },
   "skill_pct": {
-    "day_ahead_vs_climatology": 48.0,
-    "day_ahead_vs_persistence": 54.1,
-    "day_ahead_vs_nwp_powercurve": 10.8
+    "day_ahead_vs_climatology": 48.3,
+    "day_ahead_vs_persistence": 54.3,
+    "day_ahead_vs_nwp_powercurve": 11.3
   },
   "per_month": [
     {
       "month": "2025-10",
-      "model": 0.154,
+      "model": 0.1503,
       "climatology": 0.323,
       "persistence": 0.3115,
       "nwp_powercurve": 0.1776
     },
     {
       "month": "2025-11",
-      "model": 0.1599,
+      "model": 0.1585,
       "climatology": 0.3438,
       "persistence": 0.3993,
       "nwp_powercurve": 0.1845
     },
     {
       "month": "2025-12",
-      "model": 0.1869,
+      "model": 0.1876,
       "climatology": 0.3489,
       "persistence": 0.3977,
       "nwp_powercurve": 0.2095
     },
     {
       "month": "2026-01",
-      "model": 0.174,
+      "model": 0.1744,
       "climatology": 0.2832,
       "persistence": 0.3577,
       "nwp_powercurve": 0.185
     }
   ],
+  "nowcast": {
+    "tau_used_h": 2.0,
+    "by_tau_h": {
+      "0": {
+        "mae_leads_0_11": 0.1517,
+        "mae_intraday": 0.1566
+      },
+      "1": {
+        "mae_leads_0_11": 0.1471,
+        "mae_intraday": 0.1543
+      },
+      "2": {
+        "mae_leads_0_11": 0.1445,
+        "mae_intraday": 0.153
+      },
+      "3": {
+        "mae_leads_0_11": 0.1451,
+        "mae_intraday": 0.1534
+      },
+      "4": {
+        "mae_leads_0_11": 0.1477,
+        "mae_intraday": 0.155
+      },
+      "6": {
+        "mae_leads_0_11": 0.1553,
+        "mae_intraday": 0.1603
+      }
+    },
+    "note": "tau 0 = no blend; the blend is applied only when SCADA is at most 2 h old at the issue time"
+  },
   "leave_one_turbine_out": {
     "train": "t1",
     "test": "t2",
     "fold": "2026-01",
-    "mae": 0.1797,
-    "mae_reference": 0.1772,
+    "mae": 0.1814,
+    "mae_reference": 0.1781,
     "note": "day-ahead MAE on t2 when trained only on t1 (mae) vs trained on all turbines (mae_reference)"
   },
   "interval_calibration": {
-    "k": 1.06,
+    "k": 1.07,
     "target_coverage": 0.8,
     "fitted_on_months": [
       "2025-10",
@@ -494,9 +531,9 @@
       "2025-12"
     ],
     "check_month": "2026-01",
-    "coverage_fit_before": 0.716,
-    "coverage_fit_after": 0.807,
-    "coverage_check_before": 0.732,
-    "coverage_check_after": 0.807
+    "coverage_fit_before": 0.717,
+    "coverage_fit_after": 0.8,
+    "coverage_check_before": 0.713,
+    "coverage_check_after": 0.799
   }
 }

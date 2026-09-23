@@ -37,6 +37,8 @@ def resolve_provider(wanted: str | None = None) -> dict:
 
 def candidates() -> list[dict]:
     """All configured providers in fallback order (OpenAI → NVIDIA)."""
+    if os.environ.get("LLM_PROVIDER", "auto").strip().lower() == "none":
+        return []
     out = []
     for name in ("openai", "nvidia"):
         r = resolve_provider(name)
@@ -142,7 +144,9 @@ class LLMPolicy:
 
     def update(self, state: RunState, tracer) -> None:
         self.messages.append({"role": "user", "content": (
-            f"The clock is now {state.dc(state.as_of_utc)} (data clock). Call check_for_updates. If newer weather runs were "
-            "published, fetch and validate them, run the forecast again for the remaining hours, analyze the revision and publish "
-            "a new version whose summary explains what changed. If there are no updates, reply briefly without publishing.")})
+            f"The clock is now {state.dc(state.as_of_utc)} (data clock). Call check_for_updates: it re-fetches the weather and "
+            "reports, per model, the share of remaining hours whose inputs would come from a newer run (the fresh data is already "
+            "loaded). Decide: if the update is material, call validate_weather, run_forecast, analyze_forecast and publish a new "
+            "version whose summary explains what changed and why you recomputed; if there are no newer runs, or the change is "
+            "negligible, keep the current version and reply briefly with your reason, without publishing.")})
         self._loop(state, tracer)

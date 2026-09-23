@@ -102,7 +102,7 @@ def run_validation(site_key: str = "shelek", horizon_h: int = config.HORIZON_H, 
         test = rows[(rows["issue_time_utc"] >= start) & (rows["issue_time_utc"] < end)].copy()
         m = ForecastModel(turbine_ids=site.turbine_ids).fit(train)
         m.cutoff_utc = iso_z(start)
-        m.save(config.models_dir() / site.site / f"model_cutoff_{month}.pkl")
+        m.save(config.models_dir() / site.site / f"model_cutoff_{start:%Y%m%dT%H%M}Z.pkl")
         p = m.predict(test)
         test = pd.concat([test, p], axis=1)
         test = add_baselines(test, site, train, m)
@@ -156,6 +156,21 @@ def _metrics(farm: pd.DataFrame, site: config.Site, issues_n: int) -> dict:
         per_month.append({"month": month, **{k: _scores(d["actual"].to_numpy(float), d[c].to_numpy(float))["mae"]
                                              for k, c in [("model", "mean"), ("climatology", "climatology"),
                                                           ("persistence", "persistence"), ("nwp_powercurve", "nwp_powercurve")]}})
+    # intraday blend with the last observation (forecast.py: delta = w * (p_last - mean), w = exp(-(lead+1)/tau))
+    from .forecast import NOWCAST_TAU_H
+    ia = ev[ev["product"] == "intraday"].copy()
+    has_p = ia["persistence"].notna()
+    grid = {}
+    for tau in (0, 1, 2, 3, 4, 6):
+        w = np.exp(-(ia["lead_h"] + 1) / tau) if tau else 0.0
+        blend = ia["mean"] + (w * (ia["persistence"] - ia["mean"])).where(has_p, 0.0)
+        early = ia["lead_h"] < 12
+        grid[str(tau)] = {"mae_leads_0_11": _scores(ia.loc[early, "actual"].to_numpy(float), blend[early].to_numpy(float))["mae"],
+                          "mae_intraday": _scores(ia["actual"].to_numpy(float), blend.to_numpy(float))["mae"]}
+        if tau == NOWCAST_TAU_H:
+            by_product["intraday"]["model_with_nowcast"] = _scores(ia["actual"].to_numpy(float), blend.to_numpy(float))
+    nowcast = {"tau_used_h": NOWCAST_TAU_H, "by_tau_h": grid,
+               "note": "tau 0 = no blend; the blend is applied only when SCADA is at most 2 h old at the issue time"}
     m_da = by_product["day_ahead"]
     skill = {}
     for ref in ("climatology", "persistence", "nwp_powercurve"):
@@ -175,6 +190,7 @@ def _metrics(farm: pd.DataFrame, site: config.Site, issues_n: int) -> dict:
                                     "mean_width": round(float((da["p90"] - da["p10"]).mean()), 3)}},
         "skill_pct": skill,
         "per_month": per_month,
+        "nowcast": nowcast,
     }
 
 

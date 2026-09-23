@@ -63,8 +63,8 @@ class RulesPolicy:
         if not (u.get("data") or {}).get("has_updates"):
             tracer.emit("decision", "No newer weather runs: the published forecast stays current.")
             return
-        tracer.emit("decision", "Newer weather runs are available: recomputing the remaining hours of the window.")
-        call_tool(state, "fetch_weather", {}, tracer)
+        tracer.emit("decision", "Newer weather runs change the inputs of the remaining hours: recomputing them "
+                                "(the update check already loaded the fresh data).")
         v = call_tool(state, "validate_weather", {}, tracer)
         excl = [m for m in ((v.get("data") or {}).get("recommend_exclude") or []) if m not in state.excluded]
         call_tool(state, "run_forecast", {"exclude_models": excl}, tracer)

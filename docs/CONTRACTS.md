@@ -64,6 +64,7 @@ Only the core owner changes it. Change requests go to `docs/requests/` (one file
   runs/<issue_id>/analysis.md       markdown analysis written by the agent
   runs/<issue_id>/run.json          schema R
   live/<issue_id>/...               same files, produced by `forecast --now`
+  adhoc/<issue_id>/...              same files, produced by single runs (`forecast --issue`, the UI agent tab)
   test_period/submission_day_ahead.csv   schema S (jury-facing, wide)
   test_period/all_issues.csv             schema F (every issue, every version)
   validation/metrics.json                schema M
@@ -190,7 +191,7 @@ def site_info(site: str) -> dict
     #  "test_period": {"start": "2026-02-01", "end": "2026-02-28"},
     #  "issue_range_data_clock": {"min": "YYYY-MM-DD HH:MM", "max": "YYYY-MM-DD HH:MM"}}
 def list_runs(site: str, kind: str = "runs") -> pd.DataFrame
-    # kind in {"runs", "live"}; columns: issue_id, issue_time_utc, versions, policy, provider, created_at_utc
+    # kind in {"runs", "adhoc", "live"}; columns: issue_id, issue_time_utc, versions, policy, provider, created_at_utc
 def load_run(site: str, issue_id: str, kind: str = "runs") -> dict
     # {"forecast": DataFrame(F), "weather": DataFrame(W), "trace": list[dict(T)], "analysis": str, "meta": dict(R)}
 def load_submission(site: str) -> pd.DataFrame         # schema S
@@ -206,8 +207,9 @@ def system_info() -> dict
     #  "policies": ["auto", "llm", "rules"], "tools": [{"name", "description"}]}
     # The UI's "How it works" tab must take these facts from here, not hard-code them.
 def run_agent(site: str, issue_time_data_clock: str, policy: str = "auto",
-              on_event=None, horizon_h: int = 48, offline: bool | None = None) -> dict
-    # Runs the full agent loop and persists to runs/<issue_id>/. Returns the same dict as load_run.
+              on_event=None, horizon_h: int = 48, offline: bool | None = None, kind: str = "adhoc") -> dict
+    # Runs the full agent loop and persists to adhoc/<issue_id>/ (kind="runs" only for the backtest).
+    # Returns the same dict as load_run.
     # on_event(event: dict) is called synchronously for each trace event (schema T), for live display.
 def forecast_now(site: str, policy: str = "auto", on_event=None) -> dict   # persists to live/<issue_id>/
 ```
@@ -223,7 +225,7 @@ def forecast_now(site: str, policy: str = "auto", on_event=None) -> dict   # per
 | `fetch-history [--site S]` | Bulk archived weather → cache |
 | `train [--site S]` | Train the models |
 | `validate [--site S]` | Walk-forward validation → `metrics.json` |
-| `backtest [--site S] [--start 2026-01-31] [--end 2026-02-28] [--policy …] [--offline] [--outputs-dir DIR]` | Rolling agent run over the test period |
+| `backtest [--site S] [--start 2026-01-31] [--end 2026-02-28] [--policy …] [--offline]` | Rolling agent run over the test period (output root: env `WINDAGENT_OUTPUTS_DIR`) |
 | `forecast [--site S] (--issue "YYYY-MM-DD HH:MM" \| --now) [--policy …] [--offline]` | A single issue, or live now |
 | `evaluate [--site S] --actuals t1=PATH --actuals t2=PATH [--forecast PATH]` | Score against actuals in the organizers' CSV format |
 | `detect-clock [--site S]` | SCADA clock-offset forensics |

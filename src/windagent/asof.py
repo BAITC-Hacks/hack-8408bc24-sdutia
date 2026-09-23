@@ -63,10 +63,12 @@ def select_asof_many(weather_long: pd.DataFrame, issue_times_utc, horizon_h: int
         chosen = chosen.sort_values("_rank").drop_duplicates(["issue_time_utc", "valid_time_utc"], keep="first")
         chosen["model"] = model
         out.append(chosen.drop(columns="_rank"))
-    sel = pd.concat(out, ignore_index=True) if out else pd.DataFrame(columns=["issue_time_utc", "model", "valid_time_utc"])
+    cols = ["issue_time_utc", "model", "valid_time_utc", "offset_days", "init_time_utc", "lead_from_init_h", *_VARS]
+    sel = pd.concat(out, ignore_index=True) if out else pd.DataFrame()
+    if sel.empty:
+        return pd.DataFrame(columns=cols)
     sel["lead_from_init_h"] = (sel["valid_time_utc"] - sel["init_time_utc"]) / pd.Timedelta(hours=1)
     assert_asof(sel)
-    cols = ["issue_time_utc", "model", "valid_time_utc", "offset_days", "init_time_utc", "lead_from_init_h", *_VARS]
     return sel[cols].sort_values(["issue_time_utc", "model", "valid_time_utc"]).reset_index(drop=True)
 
 

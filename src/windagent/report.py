@@ -113,6 +113,10 @@ def update_readme(path: Path, block: str) -> bool:
 
 
 def compare(a: str, b: str, atol: float = 2e-4) -> tuple[bool, str]:
+    from .errors import InputError
+    for f in (a, b):
+        if not Path(f).exists():
+            raise InputError(f"File not found: {f}", f"Файл не найден: {f}")
     x, y = pd.read_csv(a, encoding="utf-8"), pd.read_csv(b, encoding="utf-8")
     if len(x) != len(y):
         return False, f"row count differs: {len(x)} vs {len(y)}"

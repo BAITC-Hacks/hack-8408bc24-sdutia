@@ -76,8 +76,9 @@ def site_info(site: str) -> dict:
 
 
 def list_runs(site: str, kind: str = "runs") -> pd.DataFrame:
-    if kind not in {"runs", "live"}:
-        raise InputError(f"kind must be 'runs' or 'live', got '{kind}'", f"kind должен быть 'runs' или 'live', получено '{kind}'")
+    if kind not in {"runs", "live", "adhoc"}:
+        raise InputError(f"kind must be 'runs', 'adhoc' or 'live', got '{kind}'",
+                         f"kind должен быть 'runs', 'adhoc' или 'live', получено '{kind}'")
     root = _site_dir(site) / kind
     cols = ["issue_id", "issue_time_utc", "versions", "policy", "provider", "created_at_utc"]
     rows = []
@@ -175,14 +176,16 @@ def system_info() -> dict:
 
 def run_agent(site: str, issue_time_data_clock: str, policy: str = "auto",
               on_event: Callable[[dict], None] | None = None, horizon_h: int = config.HORIZON_H,
-              offline: bool | None = None) -> dict:
+              offline: bool | None = None, kind: str = "adhoc") -> dict:
     try:
         from .agent.runner import run_issue
     except ImportError as exc:
         raise DataUnavailableError("The agent is not available in this build yet.",
                                    "Агент пока недоступен в этой сборке.") from exc
+    if kind not in {"adhoc", "runs"}:
+        raise InputError(f"kind must be 'adhoc' or 'runs', got '{kind}'", f"kind должен быть 'adhoc' или 'runs', получено '{kind}'")
     return run_issue(site=site, issue_time_data_clock=issue_time_data_clock, policy=policy,
-                     on_event=on_event, horizon_h=horizon_h, offline=offline)
+                     on_event=on_event, horizon_h=horizon_h, offline=offline, kind=kind)
 
 
 def forecast_now(site: str, policy: str = "auto", on_event: Callable[[dict], None] | None = None) -> dict:

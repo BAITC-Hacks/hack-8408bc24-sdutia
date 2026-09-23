@@ -19,7 +19,10 @@ from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.isotonic import IsotonicRegression
 
 QUANTILES = (0.1, 0.5, 0.9)
-_EXCLUDE = {"issue_time_utc", "target_time_utc", "entity", "actual", "available", "ws_obs"}
+# lead_h is excluded on purpose: training issues are all at 00:00 (data clock), so lead time would be
+# confounded with hour of day and would not transfer to v2 updates / live runs at other hours.
+# Forecast age is still represented per weather model (<model>_lead_from_init_h). Validation: MAE 0.168 vs 0.169.
+_EXCLUDE = {"issue_time_utc", "target_time_utc", "entity", "actual", "available", "ws_obs", "lead_h"}
 _HGB = dict(max_iter=350, learning_rate=0.05, max_leaf_nodes=31, min_samples_leaf=60,
             l2_regularization=1.0, early_stopping=False, random_state=0)
 
@@ -100,6 +103,7 @@ class ForecastModel:
         out["p10"] = np.clip(q[:, 1] - k * (q[:, 1] - q[:, 0]), 0.0, 1.0)
         out["p50"] = q[:, 1]
         out["p90"] = np.clip(q[:, 1] + k * (q[:, 2] - q[:, 1]), 0.0, 1.0)
+        out["mean"] = np.clip(out["mean"], out["p10"], out["p90"])   # point forecast stays inside its interval
         return out
 
     def predict_powercurve(self, rows: pd.DataFrame, prefer=("aifs", "ifs", "icon", "gfs")) -> pd.Series:

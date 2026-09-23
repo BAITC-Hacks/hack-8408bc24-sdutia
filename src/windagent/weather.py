@@ -168,7 +168,12 @@ def window_for_issue(site: config.Site, issue_time_utc: pd.Timestamp, horizon_h:
                 source[model] = "missing"
                 continue
         frames.append(df[(df["valid_time_utc"] >= t0) & (df["valid_time_utc"] <= t1)])
-    if not frames:
-        raise ExternalServiceError("No weather data available (API unreachable and no cache).",
-                                   "Нет данных погоды (API недоступен и нет кэша).")
-    return pd.concat(frames, ignore_index=True), source
+    out = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    if out.empty:
+        where = "the weather cache (offline mode)" if offline else "the API or the weather cache"
+        raise ExternalServiceError(
+            f"No archived weather forecasts for {t0:%Y-%m-%d %H:%M} UTC in {where}. The committed cache covers "
+            f"2024-02 … 2026-03-03; for later dates run online.",
+            f"Нет архивных прогнозов погоды на {t0:%Y-%m-%d %H:%M} UTC ({'кэш, офлайн-режим' if offline else 'API или кэш'}). "
+            f"Кэш в репозитории покрывает 2024-02 … 2026-03-03; для более поздних дат запустите онлайн.")
+    return out, source

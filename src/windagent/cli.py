@@ -86,10 +86,11 @@ def _cmd_forecast(args) -> int:
             raise InputError("Give --issue \"YYYY-MM-DD HH:MM\" (data clock) or --now.",
                              "Укажите --issue \"ГГГГ-ММ-ДД ЧЧ:ММ\" (время данных) или --now.")
         r = runner.run_issue(args.site, args.issue, policy=args.policy, on_event=printer, horizon_h=args.horizon,
-                             offline=args.offline or None)
+                             offline=args.offline or None, kind="adhoc")
     m = r["meta"]
     print(f"issue {m['issue_id']} | policy {m['policy']}/{m['provider']} | versions {len(m['versions'])} | "
           f"models {m['models_used']} | KPIs {m['kpis']}")
+    print(f"written to outputs/{args.site}/{'live' if args.now else 'adhoc'}/{m['issue_id']}/")
     print(r["analysis"])
     return 0
 
@@ -169,9 +170,16 @@ def _cmd_verify(args) -> int:
     last = (t.stdout.strip().splitlines() or ["no output"])[-1]
     results.append(("tests (pytest -q)", t.returncode == 0, last))
     print("2/4 re-running the February backtest offline (rules policy) in a temporary folder…", flush=True)
+    import shutil
+
     tmp = tempfile.mkdtemp(prefix="windagent_verify_")
+    tmp_models = os.path.join(tmp, "_models")
+    shutil.copytree(config.models_dir(), tmp_models, ignore=shutil.ignore_patterns("model_cutoff_*"))
+    val = config.outputs_dir() / args.site / "validation"
+    shutil.copytree(val, os.path.join(tmp, args.site, "validation"))
     b = subprocess.run([sys.executable, "-m", "windagent", "backtest", "--offline", "--policy", "rules"], cwd=root,
-                       env={**env, "WINDAGENT_OUTPUTS_DIR": tmp}, capture_output=True, text=True, encoding="utf-8")
+                       env={**env, "WINDAGENT_OUTPUTS_DIR": tmp, "WINDAGENT_MODELS_DIR": tmp_models},
+                       capture_output=True, text=True, encoding="utf-8")
     committed = config.outputs_dir() / args.site / "test_period" / "submission_day_ahead.csv"
     fresh = os.path.join(tmp, args.site, "test_period", "submission_day_ahead.csv")
     if b.returncode == 0 and os.path.exists(fresh):

@@ -97,7 +97,8 @@ def list_weather_runs(state: RunState) -> dict:
         newest = (state.as_of_utc - lat).floor("6h")
         archived = state.as_of_utc >= pd.Timestamp(m["archive_from"], tz="UTC") + pd.Timedelta(days=2)
         runs.append({"model": m["id"], "label": m["label"], "latency_h": m["latency_h"],
-                     "newest_usable_run_utc": iso_z(newest), "published_by_utc": iso_z(newest + lat), "archived": bool(archived)})
+                     "newest_published_run_utc": iso_z(newest), "published_by_utc": iso_z(newest + lat), "archived": bool(archived),
+                     "note": "publication schedule; per-hour inputs may come from older runs (archive offsets are whole days)"})
     usable = [r["model"] for r in runs if r["archived"]]
     return _ok(f"{len(usable)} weather models usable at {state.dc(state.as_of_utc)} (runs published by then only).",
                runs=runs, usable_models=usable)
@@ -265,22 +266,41 @@ def _revision_prev_issue(state: RunState, farm: pd.DataFrame) -> dict | None:
 
 
 def check_for_updates(state: RunState) -> dict:
+    """Data-driven update check: re-fetch the archive (or the live API), redo the as-of selection at
+    the current clock and compare, hour by hour, which run each remaining target hour would use now
+    versus the run used by the last published version."""
     if not state.versions:
         return _err("Nothing published yet.")
-    last_w = state.versions[-1]["weather"]
-    newest_used = last_w.groupby("model")["init_time_utc"].max().to_dict()
+    remaining = int((state.window_end_utc - state.as_of_utc) / pd.Timedelta(hours=1))
+    if remaining <= 0:
+        return _ok("The forecast window has passed: nothing to update.", has_updates=False, updates=[])
+    models = _active_models(state)
+    df, source = weather.window_for_issue(state.site, state.issue_time_utc, state.horizon_h, models, state.offline)
+    new = asof.select_asof(df[df["model"].isin(models)], state.as_of_utc, remaining)
+    old = state.versions[-1]["weather"][["model", "target_time_utc", "init_time_utc"]].copy()
+    old["target_time_utc"] = pd.to_datetime(old["target_time_utc"], utc=True)
+    old["init_time_utc"] = pd.to_datetime(old["init_time_utc"], utc=True)
+    new = new.rename(columns={"valid_time_utc": "target_time_utc"})[["model", "target_time_utc", "init_time_utc"]]
+    j = new.merge(old, on=["model", "target_time_utc"], how="left", suffixes=("", "_used"))
+    j["newer"] = j["init_time_utc_used"].isna() | (j["init_time_utc"] > j["init_time_utc_used"])
     updates = []
-    for m in config.WEATHER_MODELS:
-        if m["id"] in state.excluded or m["id"] not in newest_used:
-            continue
-        newest_now = (state.as_of_utc - pd.Timedelta(hours=m["latency_h"])).floor("6h")
-        if newest_now > pd.Timestamp(newest_used[m["id"]]):
-            updates.append({"model": m["id"], "published_run_utc": iso_z(newest_now),
-                            "published_run_data_clock": state.dc(newest_now), "used_run_utc": newest_used[m["id"]]})
+    for m, g in j.groupby("model"):
+        n_new = int(g["newer"].sum())
+        if n_new:
+            newest = g.loc[g["newer"], "init_time_utc"].max()
+            updates.append({"model": m, "hours_with_newer_run": n_new, "share_of_remaining_hours": round(n_new / len(g), 3),
+                            "newest_run_utc": iso_z(newest), "newest_run_data_clock": state.dc(newest)})
     has = bool(updates)
-    state.pending_reason = ("new runs: " + ", ".join(f"{u['model']} {u['published_run_utc']}" for u in updates)) if has else ""
-    txt = f"At {state.dc(state.as_of_utc)}: " + (f"{len(updates)} model(s) published newer runs." if has else "no newer runs.")
-    return _ok(txt, has_updates=has, updates=updates, as_of_data_clock=state.dc(state.as_of_utc))
+    if has:
+        state.weather_raw, state.weather_source = df, {**state.weather_source, **source}
+        state.pending_reason = "newer runs for " + ", ".join(
+            f"{u['model']} ({u['share_of_remaining_hours']:.0%} of hours, run {u['newest_run_data_clock']})" for u in updates)
+    else:
+        state.pending_reason = ""
+    txt = (f"At {state.dc(state.as_of_utc)}: newer runs change the inputs of "
+           + ", ".join(f"{u['model']} {u['share_of_remaining_hours']:.0%}" for u in updates) + " of the remaining hours."
+           if has else f"At {state.dc(state.as_of_utc)}: no newer runs for the remaining {remaining} h; the forecast stays current.")
+    return _ok(txt, has_updates=has, updates=updates, remaining_hours=remaining, as_of_data_clock=state.dc(state.as_of_utc))
 
 
 def publish_forecast(state: RunState, summary: str = "") -> dict:
@@ -320,7 +340,7 @@ TOOL_SPECS = [
      "parameters": {"type": "object", "properties": {"exclude_models": _MODEL_ENUM}, "additionalProperties": False}},
     {"name": "analyze_forecast", "description": "Analyze the latest forecast: capacity factor vs climatology, ramps, calm and high-wind hours, uncertainty, revision vs the previous forecast, errors where actuals exist, confidence level.",
      "parameters": {"type": "object", "properties": {}, "additionalProperties": False}},
-    {"name": "check_for_updates", "description": "Check whether newer weather runs have been published since the last published version (at the current simulated clock).",
+    {"name": "check_for_updates", "description": "Re-fetch weather and check, hour by hour, whether runs published since the last version would change the inputs of the remaining forecast hours (at the current simulated clock). Returns the share of affected hours per model.",
      "parameters": {"type": "object", "properties": {}, "additionalProperties": False}},
     {"name": "publish_forecast", "description": "Publish the latest computed forecast as a new version, with a short analysis for operators (in Russian, then one line in English).",
      "parameters": {"type": "object", "properties": {"summary": {"type": "string", "description": "3-6 sentences in Russian + 1 line in English. Cite only numbers returned by tools."}},

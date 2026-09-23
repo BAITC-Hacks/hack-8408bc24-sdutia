@@ -170,6 +170,12 @@ def run_issue(site: str, issue_time_data_clock: str, policy: str = "auto", on_ev
         used = RulesPolicy()
         tracer.switch_policy("rules")
         used.initial(state, tracer)
+    if not state.versions:                       # still nothing: report the first tool error cleanly
+        from ..errors import ExternalServiceError
+        errs = [e["summary"] for e in tracer.events if e["type"] == "tool_result" and not e["ok"]]
+        reason = errs[0] if errs else "unknown reason"
+        raise ExternalServiceError(f"No forecast could be produced for {state.dc(T)}: {reason}",
+                                   f"Не удалось построить прогноз на {state.dc(T)}: {reason}")
     if update_after_h:
         as_of = T + pd.Timedelta(hours=update_after_h)
         if as_of <= now_utc() and as_of < state.window_end_utc:
@@ -215,6 +221,7 @@ def build_test_period(s: config.Site) -> dict:
     if not frames:
         raise InputError("No runs found to build the test-period files.", "Нет прогнозов для сборки файлов тестового периода.")
     all_issues = pd.concat(frames, ignore_index=True)
+    all_issues = all_issues[all_issues["issue_id"].str.endswith(f"_{config.ISSUE_HOUR_DATA_CLOCK:02d}00")]
     day = all_issues["target_time_data_clock"].str[:10]
     in_tp = (day >= tp["start"]) & (day <= tp["end"])
     out = config.outputs_dir() / s.site / "test_period"
