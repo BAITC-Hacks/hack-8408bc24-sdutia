@@ -25,7 +25,21 @@ def _load(site: str) -> dict:
         runs.append(json.loads(p.read_text(encoding="utf-8")))
     sub_p = base / "test_period" / "submission_day_ahead.csv"
     sub = pd.read_csv(sub_p, encoding="utf-8") if sub_p.exists() else pd.DataFrame()
-    return {"m": m, "clock": clock, "runs": runs, "sub": sub}
+    stats = {"llm_events": 0, "fallbacks": 0, "fallback_issues": [], "rejected_calls": 0, "rejected_issues": []}
+    for p in sorted((base / "runs").glob("*/trace.jsonl")):
+        iid = p.parent.name
+        for line in p.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            e = json.loads(line)
+            stats["llm_events"] += e.get("policy") == "llm"
+            if e.get("type") == "warning" and "falling back" in e.get("summary", ""):
+                stats["fallbacks"] += 1
+                stats["fallback_issues"].append(iid)
+            if e.get("type") == "error" and ("Unexpected arguments" in e.get("summary", "") or "Invalid arguments" in e.get("summary", "")):
+                stats["rejected_calls"] += 1
+                stats["rejected_issues"].append(iid)
+    return {"m": m, "clock": clock, "runs": runs, "sub": sub, "stats": stats}
 
 
 def _fmt(x, nd=3):
@@ -82,6 +96,14 @@ def render(site: str = "shelek", lang: str = "ru") -> str:
                    + f"{nv} " + ("опубликованных версий, политика агента" if ru else "published versions, agent policy")
                    + f": {', '.join(pol)}; " + ("исключений моделей погоды" if ru else "weather-model exclusions") + f": {excl}; "
                    + ("строк в сабмите" if ru else "submission rows") + f": {len(sub)}.")
+        st = d["stats"]
+        fb = sorted(set(st["fallback_issues"])); rj = sorted(set(st["rejected_issues"]))
+        out.append((f"Журналы агента: {st['llm_events']} событий LLM; валидатор аргументов отклонил {st['rejected_calls']} "
+                    f"некорректных вызова(ов) инструментов LLM ({', '.join(rj) or '—'}), после чего LLM повторил их корректно; "
+                    f"автоматических переходов на политику правил: {st['fallbacks']} ({', '.join(fb) or '—'})." if ru else
+                    f"Agent logs: {st['llm_events']} LLM events; the argument validator rejected {st['rejected_calls']} malformed "
+                    f"LLM tool call(s) ({', '.join(rj) or '—'}), which the LLM then repeated correctly; automatic fallbacks to "
+                    f"the rules policy: {st['fallbacks']} ({', '.join(fb) or '—'})."))
         post = [r["errors"] for r in in_tp if r.get("errors")]
         if post:
             e = post[0]

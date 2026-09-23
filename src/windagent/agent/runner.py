@@ -50,7 +50,8 @@ def _run_phase(phase: str, chain: list, state: RunState, tracer: Tracer) -> obje
             return pol
         except llm_mod.LLMUnavailable as exc:
             nxt = chain[i + 1] if i + 1 < len(chain) else None
-            tracer.emit("warning", f"LLM failed ({exc}); falling back to {getattr(nxt, 'provider', None) or nxt.name}.", ok=False)
+            target = "the rules policy" if (nxt is None or nxt.name == "rules") else f"{nxt.provider}/{nxt.model}"
+            tracer.emit("warning", f"LLM failed ({exc}); falling back to {target}.", ok=False)
             state.current = None if phase == "initial" and not state.versions else state.current
     return chain[-1]
 
