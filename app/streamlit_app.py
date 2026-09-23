@@ -12,6 +12,7 @@ from app.components.analytics import render_how_it_works, render_test_period, re
 from app.components.forecast import display_times, render_forecast
 from app.i18n import tr
 from app.services import call_api, clear_loaders
+from app.widgets import option_radio, option_selectbox
 
 st.set_page_config(page_title="WindAgent", page_icon="◌", layout="wide", initial_sidebar_state="expanded")
 st.markdown("""<style>
@@ -46,7 +47,7 @@ with st.sidebar:
     clocks = {"data": int(info.get("data_clock_utc_offset_h", 6)), "official": int(info.get("official_utc_offset_h", 5)), "utc": 0}
     labels = {"data": tr("clock_data", lang, offset=clocks["data"]),
               "official": tr("clock_official", lang, offset=clocks["official"]), "utc": tr("clock_utc", lang)}
-    clock = st.selectbox(tr("clock", lang), list(clocks), format_func=lambda c: labels[c], key="display_clock")
+    clock = option_selectbox(tr("clock", lang), list(clocks), format_func=lambda c: labels[c], key="display_clock")
     llm = call_api("llm_status", lang=lang, cached=False, default={})
     st.divider()
     if llm.get("configured"):
@@ -69,7 +70,7 @@ selected_run = None
 with tabs[0]:
     st.subheader(tr("forecast_heading", lang))
     st.caption(tr("forecast_note", lang))
-    kind = st.radio(tr("run_kind", lang), ["runs", "live"], horizontal=True,
+    kind = option_radio(tr("run_kind", lang), ["runs", "live"], horizontal=True,
                     format_func=lambda value: tr("historical" if value == "runs" else "live", lang), key="run_kind")
     runs = call_api("list_runs", site, kind, lang=lang, default=pd.DataFrame())
     if runs.empty:
@@ -81,14 +82,14 @@ with tabs[0]:
         issues = ordered["issue_id"].tolist()
         formatted = dict(zip(issues, display_times(ordered["issue_time_utc"], offset)))
         c1, c2, c3 = st.columns([3, 1, 2])
-        issue_id = c1.selectbox(tr("issue", lang), issues, format_func=lambda value: f"{formatted[value]} · {clock_label}", key=f"issue_{site}_{kind}")
+        issue_id = option_selectbox(tr("issue", lang), issues, format_func=lambda value: f"{formatted[value]} · {clock_label}", key=f"issue_{site}_{kind}", ui=c1)
         with st.spinner(tr("loading", lang)):
             selected_run = call_api("load_run", site, issue_id, kind, lang=lang)
         if selected_run:
             forecast = selected_run.get("forecast", pd.DataFrame())
             versions = sorted(forecast["version"].dropna().unique().tolist(), reverse=True) if "version" in forecast else []
             if versions:
-                version = c2.selectbox(tr("version", lang), versions, format_func=lambda v: f"v{v}", key=f"version_{site}_{issue_id}")
+                version = option_selectbox(tr("version", lang), versions, format_func=lambda v: f"v{v}", key=f"version_{site}_{issue_id}", ui=c2)
                 show_turbines = c3.toggle(tr("show_turbines", lang), key="show_turbines")
                 render_forecast(selected_run, site, version, lang, offset, clock_label, show_turbines)
             else:

@@ -9,6 +9,7 @@ from app.components.forecast import render_revisions
 from app.i18n import tr
 from app.rate_limit import reserve_policy
 from app.services import ROOT, call_api, clear_loaders
+from app.widgets import get_choice, option_selectbox, set_choice
 
 ICONS = {"run_start": "▶", "plan": "◇", "tool_call": "↗", "tool_result": "✓", "decision": "◆",
          "llm_message": "✦", "warning": "⚠", "error": "✕", "publish": "●", "run_end": "■"}
@@ -25,7 +26,7 @@ def render_event(event: dict, lang: str) -> None:
         st.caption(tr("event_ms", lang, value=event["duration_ms"]))
 
 def _official_clock() -> None:
-    st.session_state["display_clock"] = "official"
+    set_choice("display_clock", "official")
 
 def render_agent(site: str, info: dict, system: dict, saved: dict | None, lang: str,
                  offset: int, clock_label: str) -> None:
@@ -47,7 +48,7 @@ def render_agent(site: str, info: dict, system: dict, saved: dict | None, lang: 
     selected_date = cols[0].date_input(tr("issue_date", lang), value=low.date(), min_value=low.date(), max_value=high.date(), key="agent_issue_date")
     selected_time = cols[1].time_input(tr("issue_time", lang), value=low.timetz(), step=3600, key="agent_issue_time")
     policies = [p for p in system.get("policies", ["auto", "llm", "rules"]) if p in {"auto", "llm", "rules"}]
-    policy = cols[2].selectbox(tr("policy", lang), policies or ["rules"], key="agent_policy", format_func=lambda p: tr("policy_" + p, lang))
+    policy = option_selectbox(tr("policy", lang), policies or ["rules"], key="agent_policy", format_func=lambda p: tr("policy_" + p, lang), ui=cols[2])
     st.caption(tr("bounds", lang, start=bounds["min"], end=bounds["max"]))
     buttons = st.columns([1, 1, 2])
     historical = buttons[0].button(tr("run_agent", lang), key="run_agent", type="primary", width="stretch")
@@ -94,7 +95,7 @@ def render_agent(site: str, info: dict, system: dict, saved: dict | None, lang: 
     meta = result.get("meta") or {}
     if meta.get("synthetic_fixture"):
         st.warning(tr("synthetic", lang))
-    if st.session_state.get(f"agent_live_{site}") and st.session_state.get("display_clock") == "official":
+    if st.session_state.get(f"agent_live_{site}") and get_choice("display_clock") == "official":
         st.caption(tr("live_clock", lang))
     left, right = st.columns([3, 2])
     with left:

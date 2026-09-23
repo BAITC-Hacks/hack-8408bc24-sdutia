@@ -33,7 +33,7 @@ Fixture forecasts and validation values are labelled as synthetic. To return to 
 
 Tests use temporary copies of fixtures, block network access and remove LLM credentials. They cover all five tabs, empty outputs, callback timelines, RU/EN, manual clock selection after a live run, chart gaps, exact revision matching, complete-day energy aggregation, API failures, and rate limits.
 
-Verified on Python 3.12.14: 47 UI tests pass. A separate offline AppTest renders real outputs in RU and EN without errors. A browser run of the real rules agent for `2026-02-28 00:00` successfully published v1 (48 hours) and v2 (42 remaining hours), using cached weather and an isolated local output directory.
+Verified on Python 3.12.14: 49 UI tests pass. A separate offline AppTest renders real outputs in RU and EN without errors. A browser run of the real rules agent for `2026-02-28 00:00` successfully published v1 (48 hours) and v2 (42 remaining hours), using cached weather and an isolated local output directory.
 
 Browser captures at 1280 px width: [forecast](../docs/figures/ui/forecast.png), [agent run](../docs/figures/ui/agent.png), [validation](../docs/figures/ui/validation.png), and [test period](../docs/figures/ui/test-period.png). These show real project outputs; the agent capture comes from the isolated run.
 

@@ -64,6 +64,10 @@ def start_app() -> AppTest:
     return app
 
 
+def choice(app: AppTest, key: str, widget_type: str = "selectbox"):
+    return next(widget for widget in app.get(widget_type) if widget.key.startswith(key + "__"))
+
+
 def visible_text(app: AppTest) -> str:
     """Read human-facing text without coupling tests to layout containers."""
     text = []
@@ -130,7 +134,7 @@ def test_agent_streams_five_callback_events(fixture_outputs: Path, monkeypatch: 
     app = start_app()
     app.date_input(key="agent_issue_date").set_value(dt.date(2026, 2, 1))
     app.time_input(key="agent_issue_time").set_value(dt.time(0, 0))
-    app.selectbox(key="agent_policy").set_value("rules")
+    choice(app, "agent_policy").set_value("rules")
     app.button(key="run_agent").click().run()
 
     assert not app.exception, [element.value for element in app.exception]
@@ -172,20 +176,109 @@ def test_live_forecast_defaults_to_official_clock_but_allows_manual_override(
     monkeypatch.setattr(api, "forecast_now", fake_forecast_now)
     app = start_app()
     app.selectbox(key="language").set_value("EN")
-    app.selectbox(key="agent_policy").set_value("rules")
+    choice(app, "agent_policy").set_value("rules")
     app.button(key="forecast_now").click().run()
 
     assert not app.exception, [element.value for element in app.exception]
     assert calls == [("shelek", "rules")]
-    assert app.selectbox(key="display_clock").value == "official"
+    assert choice(app, "display_clock").value == "official"
     assert "official Kazakhstan time" in visible_text(app)
     assert revision_chart(app)["layout"]["xaxis"]["title"]["text"] == "Official Kazakhstan time (UTC+5)"
 
     for selected_clock, expected_axis in (("utc", "UTC"), ("data", "Data clock (UTC+6)")):
-        app.selectbox(key="display_clock").set_value(selected_clock).run()
+        choice(app, "display_clock").set_value(selected_clock).run()
 
         assert not app.exception, [element.value for element in app.exception]
-        assert app.selectbox(key="display_clock").value == selected_clock
+        assert choice(app, "display_clock").value == selected_clock
         assert "The live forecast is shown in official Kazakhstan time." not in visible_text(app)
         assert revision_chart(app)["layout"]["xaxis"]["title"]["text"] == expected_axis
     assert calls == [("shelek", "rules")], "Changing a display clock must not launch another forecast"
+
+
+def test_language_switch_and_stale_browser_labels_never_reach_api(
+    fixture_outputs: Path, monkeypatch: pytest.MonkeyPatch,
+):
+    """Exercise Streamlit's formatted-string wire protocol, including stale labels.
+
+    Public AppTest set_value takes raw Python options and can miss the browser
+    failure. _run lets this regression submit actual WidgetState string values.
+    """
+    seen_kinds, seen_issues, seen_policies = [], [], []
+    original_list_runs, original_load_run = api.list_runs, api.load_run
+    result = original_load_run("shelek", "2026-02-01_0000")
+
+    def list_runs(site, kind="runs"):
+        seen_kinds.append(kind)
+        return original_list_runs(site, kind)
+
+    def load_run(site, issue_id, kind="runs"):
+        seen_issues.append(issue_id)
+        return original_load_run(site, issue_id, kind)
+
+    def run_agent(site, issue_time_data_clock, policy="auto", on_event=None, **kwargs):
+        seen_policies.append(policy)
+        return result
+
+    monkeypatch.setattr(api, "list_runs", list_runs)
+    monkeypatch.setattr(api, "load_run", load_run)
+    monkeypatch.setattr(api, "run_agent", run_agent)
+    app = start_app()
+    choice(app, "display_clock").set_value("official")
+    choice(app, "agent_policy").set_value("rules")
+    choice(app, "issue_shelek_runs").set_value("2026-02-01_0000").run()
+    old_keys = {key: choice(app, key, kind).key for key, kind in (
+        ("display_clock", "selectbox"), ("agent_policy", "selectbox"),
+        ("issue_shelek_runs", "selectbox"), ("run_kind", "radio"),
+    )}
+
+    app.selectbox(key="language").set_value("EN").run()
+
+    assert not app.exception
+    assert not app.error
+    for key, kind in (("display_clock", "selectbox"), ("agent_policy", "selectbox"),
+                      ("issue_shelek_runs", "selectbox"), ("run_kind", "radio")):
+        assert choice(app, key, kind).key != old_keys[key]
+    assert choice(app, "run_kind", "radio").options == ["Historical", "Live"]
+    assert choice(app, "display_clock").value == "official"
+    assert choice(app, "agent_policy").value == "rules"
+    assert choice(app, "issue_shelek_runs").value == "2026-02-01_0000"
+
+    wire = app._tree.get_widget_states()
+    stale = {
+        choice(app, "run_kind", "radio").id: "Исторические",
+        choice(app, "display_clock").id: "Официальное время РК (UTC+5)",
+        choice(app, "agent_policy").id: "Правила",
+        choice(app, "issue_shelek_runs").id: "2026-01-31 23:00 · Официальное время РК (UTC+5)",
+    }
+    for widget in wire.widgets:
+        if widget.id in stale:
+            widget.string_value = stale[widget.id]
+        elif widget.id == app.button(key="refresh").id:
+            widget.trigger_value = True
+    app._run(wire)
+
+    assert not app.exception, [element.value for element in app.exception]
+    assert not app.error, [element.value for element in app.error]
+    assert choice(app, "run_kind", "radio").value == "runs"
+    assert choice(app, "display_clock").value == "official"
+    assert choice(app, "agent_policy").value == "rules"
+    assert choice(app, "issue_shelek_runs").value == "2026-02-01_0000"
+    app.button(key="run_agent").click().run()
+    assert not app.exception
+    assert not app.error
+    assert seen_kinds and set(seen_kinds) == {"runs"}
+    assert seen_issues and set(seen_issues) <= {"2026-02-01_0000", "2026-02-02_0000"}
+    assert seen_policies == ["rules"]
+
+
+def test_issue_option_label_updates_when_display_clock_changes(fixture_outputs: Path):
+    app = start_app()
+    original = choice(app, "issue_shelek_runs")
+    original_value, original_key = original.value, original.key
+    choice(app, "display_clock").set_value("utc").run()
+
+    issue = choice(app, "issue_shelek_runs")
+    assert not app.exception
+    assert issue.value == original_value
+    assert issue.key != original_key
+    assert all(label.endswith(" · UTC") for label in issue.options)
