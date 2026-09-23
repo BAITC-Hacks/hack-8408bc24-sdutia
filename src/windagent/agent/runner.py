@@ -108,7 +108,11 @@ def _write_outputs(state: RunState, tracer: Tracer, policy_used, errors: dict | 
         "issue_time_data_clock": state.dc(state.issue_time_utc), "created_at_utc": iso_z(now_utc()),
         "policy": policy_used.name, "provider": getattr(policy_used, "provider", "none"),
         "model": getattr(policy_used, "model", None), "horizon_h": state.horizon_h,
-        "versions": [{"version": v["version"], "as_of_utc": iso_z(v["as_of_utc"]), "reason": v["reason"]} for v in state.versions],
+        "versions": [{"version": v["version"], "as_of_utc": iso_z(v["as_of_utc"]), "reason": v["reason"],
+                      "models_used": v["info"]["models_used"], "runs_used": v["info"]["runs_used"],
+                      "kpis": {k: (v.get("analysis") or {}).get(k) for k in
+                               ("energy_norm_h", "capacity_factor", "max_ramp_3h", "mean_band_width", "confidence")}}
+                     for v in state.versions],
         "models_used": state.versions[-1]["info"]["models_used"],
         "excluded_models": [{"model": m, "reason": r} for m, r in state.excluded.items()],
         "runs_used": state.versions[0]["info"]["runs_used"],

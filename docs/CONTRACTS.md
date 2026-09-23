@@ -140,7 +140,8 @@ Only the core owner changes it. Change requests go to `docs/requests/` (one file
  "actuals_available": false, "errors": null}
 ```
 
-`errors` is `{"mae": …, "rmse": …}` when actuals exist for the forecast window.
+- `errors` is `{"mae": …, "rmse": …}` when actuals exist for the forecast window.
+- Optional since commit S1+: each `versions[]` entry may also carry `models_used`, `runs_used` and `kpis`, for version-specific cards. Consumers must tolerate their absence.
 
 ### Schema S: `submission_day_ahead.csv` (jury-facing)
 
