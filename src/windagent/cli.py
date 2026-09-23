@@ -208,6 +208,71 @@ def _cmd_verify(args) -> int:
     return 0 if all(ok for _, ok, _ in results) else 1
 
 
+def _cmd_demo(args) -> int:
+    """One command for the jury: agent run with readable steps, full February recomputed offline,
+    CSV written to results/, readable summary in the console. No keys, no internet, no Streamlit."""
+    import json
+    import shutil
+
+    import pandas as pd
+
+    from . import config
+    from .agent import runner
+
+    committed_metrics = config.outputs_dir() / args.site / "validation" / "metrics.json"
+    out = config.REPO_ROOT / "results"
+    out.mkdir(exist_ok=True)
+    os.environ["WINDAGENT_OFFLINE"] = "1"
+    os.environ["WINDAGENT_OUTPUTS_DIR"] = str(out)          # never touches the committed outputs/
+    steps = {"inspect_scada": "Check turbine (SCADA) data", "list_weather_runs": "Which weather forecasts were published",
+             "fetch_weather": "Load archived weather forecasts", "validate_weather": "Check weather quality",
+             "run_forecast": "Run the ML model", "analyze_forecast": "Analyze the forecast",
+             "publish_forecast": "Publish", "check_for_updates": "6 h later: newer weather forecasts?"}
+
+    def show(e):
+        if e["type"] == "tool_result":
+            print(f"   {'OK ' if e['ok'] else 'ERR'} {steps.get(e['tool'], e['tool']):<42} {e['summary'][:110]}")
+        elif e["type"] == "decision":
+            print(f"   ->  Agent decision: {e['summary'][:120]}")
+
+    print("=" * 100)
+    print("WindAgent - Agentic AI hourly wind-farm forecast (Shelek WPP, 2 turbines). Offline, no API keys needed.")
+    print("=" * 100)
+    print("\n[1/3] One forecast by the agent: issued 2026-01-31 00:00 (data clock UTC+6), next 48 hours")
+    r = runner.run_issue(args.site, "2026-01-31 00:00", policy="rules", on_event=show, kind="adhoc")
+    e = r["meta"].get("errors")
+    if e:
+        print(f"   Post-check against real Jan 31 turbine data (hidden from the agent): mean error {e['mae'] * 100:.1f}% of rated power")
+    print("\n[2/3] The whole test period: 29 daily forecasts, 31 Jan -> 28 Feb 2026 (about 1 minute)...")
+    res = runner.backtest(args.site, policy="rules", offline=True, log=lambda *a: None)
+    dst = out / "forecast_february_2026.csv"
+    shutil.copyfile(res["path"], dst)
+    sub = pd.read_csv(dst)
+    day = sub["target_time_data_clock"].str[:10]
+    daily = sub.groupby(day).agg(avg=("farm_mean", "mean"), low=("farm_p10", "mean"), high=("farm_p90", "mean"),
+                                 peak=("farm_mean", "max"))
+    print(f"   Day-ahead forecast for every day of February (farm output, % of rated power), {len(sub)} hours:")
+    print(f"   {'date':<12}{'average':>9}{'P10':>7}{'P90':>7}{'peak hour':>11}")
+    for d, row in daily.iterrows():
+        print(f"   {d:<12}{row['avg'] * 100:>8.0f}%{row['low'] * 100:>6.0f}%{row['high'] * 100:>6.0f}%{row['peak'] * 100:>10.0f}%")
+    print("\n[3/3] Accuracy measured on history the model had not seen (walk-forward, Oct 2025 - Jan 2026):")
+    if committed_metrics.exists():
+        m = json.loads(committed_metrics.read_text(encoding="utf-8"))
+        da = m["by_product"]["day_ahead"]
+        print(f"   Day-ahead mean error (MAE): {da['model']['mae'] * 100:.1f}% of rated power "
+              f"(climatology {da['climatology']['mae'] * 100:.1f}%, persistence {da['persistence']['mae'] * 100:.1f}%, "
+              f"raw weather forecast {da['nwp_powercurve']['mae'] * 100:.1f}%)")
+        s = m.get("skill_pct", {})
+        print(f"   Better than climatology by {s.get('day_ahead_vs_climatology')}%, than persistence by "
+              f"{s.get('day_ahead_vs_persistence')}%; P10-P90 coverage {m['interval_calibration']['coverage_check_after'] * 100:.1f}% (target 80%)")
+    print("\nFiles written:")
+    print(f"   {dst}   <- February forecast, hourly (672 rows)")
+    print(f"   {out / args.site / 'test_period' / 'all_issues.csv'}   <- every forecast and version")
+    print(f"   {out / args.site / 'runs'}   <- per-day agent logs (trace.jsonl), analysis, weather inputs")
+    print("Dashboard (optional): streamlit run app/streamlit_app.py  |  live: https://windagent.kunai.kz")
+    return 0
+
+
 def _cmd_provenance(args) -> int:
     from .provenance import run
 
@@ -275,6 +340,7 @@ def build_parser() -> argparse.ArgumentParser:
     add("detect-clock", "SCADA clock-offset forensics", _cmd_detect_clock)
     add("report", "write the generated metrics block into README.md / README.en.md", _cmd_report)
     add("verify", "run all checks locally: tests, reproduce the submission, schema, clock", _cmd_verify)
+    add("demo", "one command for the jury: agent steps, full February recomputed, CSV in results/, summary", _cmd_demo)
     add("provenance", "re-measure weather publication delays and the archive's run mapping (needs internet)", _cmd_provenance)
     sp = sub.add_parser("compare", help="compare two submission CSVs (CI reproducibility check)")
     sp.add_argument("a")

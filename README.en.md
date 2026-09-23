@@ -7,6 +7,7 @@
 
 > **Live version:** **https://windagent.kunai.kz** — the same Docker image that is built from this repository (section 11).
 > **Check it yourself in 3 minutes:** `pip install -r requirements.txt` → `python -m windagent verify` → 4 × PASS (section 8). No keys and no internet needed.
+> **Results without the dashboard, one command (≈1 min):** `python -m windagent demo` — the agent's steps in the console, the whole of February recomputed, a per-day table and the file `results/forecast_february_2026.csv`.
 
 ![WindAgent dashboard: explanation and key results](docs/figures/ui/intro.png)
 
@@ -241,6 +242,7 @@ streamlit run app/streamlit_app.py
 | `python -m windagent evaluate --actuals t1=FILE --actuals t2=FILE` | score against actuals in the organizers' format |
 | `python -m windagent detect-clock` | SCADA clock check |
 | `python -m windagent verify` | all checks in one command (tests, submission reproduction, schema, clock) |
+| `python -m windagent demo` | results in the console without the dashboard: agent steps, the whole of February recomputed, per-day table, CSV in `results/` |
 | `python -m windagent fetch-history` | re-download the forecast archive into the cache |
 | `python -m windagent provenance` | re-measure publication delays and check the archive's run mapping (needs internet) |
 

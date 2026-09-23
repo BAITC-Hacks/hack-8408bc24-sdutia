@@ -30,3 +30,6 @@ models/**/model_cutoff_*.pkl
 .env.*
 !.env.example
 outputs/**/adhoc/
+
+# output of 'python -m windagent demo' (regenerated on every run)
+results/

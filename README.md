@@ -7,6 +7,7 @@ English version: [README.en.md](README.en.md)
 
 > **Работающая версия:** **https://windagent.kunai.kz** — тот же Docker-образ, что собирается из этого репозитория (раздел 11).
 > **Проверка у себя за 3 минуты:** `pip install -r requirements.txt` → `python -m windagent verify` → 4 × PASS (раздел 8). Ключи и интернет не нужны.
+> **Результат без дашборда, одной командой (≈1 мин):** `python -m windagent demo` — шаги агента в консоли, весь февраль пересчитывается заново, таблица по дням и файл `results/forecast_february_2026.csv`.
 
 ![Дашборд WindAgent: пояснение и ключевые результаты](docs/figures/ui/intro.png)
 
@@ -241,6 +242,7 @@ streamlit run app/streamlit_app.py
 | `python -m windagent evaluate --actuals t1=ФАЙЛ --actuals t2=ФАЙЛ` | оценка по факту в формате организаторов |
 | `python -m windagent detect-clock` | проверка часов SCADA |
 | `python -m windagent verify` | все проверки одной командой (тесты, воспроизведение сабмита, схема, часы) |
+| `python -m windagent demo` | результат в консоли без дашборда: шаги агента, весь февраль заново, таблица по дням, CSV в `results/` |
 | `python -m windagent fetch-history` | заново скачать архив прогнозов в кэш |
 | `python -m windagent provenance` | заново измерить задержки публикации и проверить сопоставление прогонов архива (нужен интернет) |
 
