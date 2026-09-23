@@ -1,7 +1,7 @@
 # Integration contracts
 
 This document is authoritative. It fixes the interfaces between the core engine (`src/windagent`) and the presentation layer (`app/`).
-Only the core owner changes it. Change requests go to `docs/requests/codex.md`.
+Only the core owner changes it. Change requests go to `docs/requests/` (one file per engineer; see `docs/requests/README.md`).
 
 ## 1. Environment
 
