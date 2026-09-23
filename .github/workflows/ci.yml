@@ -1,8 +1,10 @@
 name: CI
 
+# GitHub Actions is currently unavailable for this organization (billing lock), so the workflow is
+# manual-only. The same checks run locally with:  python -m windagent verify
+# To re-enable automatic runs, add `push:` and `pull_request:` under `on:`.
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
 
 env:
   WINDAGENT_OFFLINE: "1"

@@ -3,7 +3,6 @@
 **WindAgent — Agentic AI для почасового прогноза выработки ВЭС на 24–48 часов**
 (кейс «Agentic AI для прогнозирования выработки ВЭС», ВЭС у Шелека, Алматинская область, 2 турбины)
 
-[![CI](https://github.com/BAITC-Hacks/hack-8408bc24-sdutia/actions/workflows/ci.yml/badge.svg)](https://github.com/BAITC-Hacks/hack-8408bc24-sdutia/actions/workflows/ci.yml)
 English version: [README.en.md](README.en.md)
 
 ---
@@ -70,7 +69,7 @@ _Блок сгенерирован командой `python -m windagent report`
 | **Режим реального времени:** прогноз на ближайшие 48 ч от текущего момента | `run_now` в [`agent/runner.py`](src/windagent/agent/runner.py) | `python -m windagent forecast --now` |
 | **Дашборд** Streamlit: 5 вкладок, RU/EN, запуск агента с живой трассировкой | [`app/`](app/) | [`tests/ui/`](tests/ui/) |
 | **Надёжность.** Проверка входных данных, коды выхода, понятные сообщения об ошибках | [`errors.py`](src/windagent/errors.py), [`cli.py`](src/windagent/cli.py) | [`tests/test_agent.py`](tests/test_agent.py), [`tests/test_timeutil.py`](tests/test_timeutil.py) |
-| **Воспроизводимость.** Docker, CI (Python 3.11–3.13); CI повторно строит февральский прогноз и сверяет его с сабмитом | [`Dockerfile`](Dockerfile), [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | вкладка Actions репозитория |
+| **Воспроизводимость.** Одна команда `python -m windagent verify` запускает тесты, заново строит февральский прогноз с нуля и сверяет его с сабмитом, проверяет схему и часы. Есть Docker и CI-workflow (Python 3.11–3.13); GitHub Actions в организации сейчас заблокирован биллингом, поэтому workflow запускается вручную | [`cli.py`](src/windagent/cli.py) (`verify`), [`Dockerfile`](Dockerfile), [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | вывод `verify`: 4 × PASS |
 
 ---
 
@@ -126,7 +125,7 @@ check_for_updates    → вышли ли новые прогоны?  да → fe
 | Прогнозы погоды | Open-Meteo Previous Runs API. Модели: ECMWF AIFS 0.25° (AI-модель погоды), ECMWF IFS 0.25°, DWD ICON, NOAA GFS | `weather.py` |
 | Интерфейс | Streamlit, Plotly | `app/` |
 | Конфигурация | YAML (`config/sites.yaml`), `.env` (python-dotenv) | `config.py` |
-| Тесты и CI | pytest, GitHub Actions, Docker | `tests/`, `.github/workflows/ci.yml`, `Dockerfile` |
+| Тесты и проверка | pytest, `windagent verify`, Docker, GitHub Actions (workflow; запуск вручную) | `tests/`, `.github/workflows/ci.yml`, `Dockerfile` |
 
 ---
 
@@ -231,6 +230,7 @@ streamlit run app/streamlit_app.py
 | `python -m windagent all [--offline]` | validate → train → backtest |
 | `python -m windagent evaluate --actuals t1=ФАЙЛ --actuals t2=ФАЙЛ` | оценка по факту в формате организаторов |
 | `python -m windagent detect-clock` | проверка часов SCADA |
+| `python -m windagent verify` | все проверки одной командой (тесты, воспроизведение сабмита, схема, часы) |
 | `python -m windagent fetch-history` | заново скачать архив прогнозов в кэш |
 
 **Коды выхода:** 0 — успех, 2 — неверный ввод, 3 — нет данных, 4 — внешний сервис недоступен и нет кэша. Ошибка выводится одной строкой `ERROR: …`.
@@ -240,6 +240,20 @@ streamlit run app/streamlit_app.py
 # 8. Как проверить решение
 
 Примерно 5–10 минут. Все шаги работают офлайн и без ключа LLM.
+
+0. **Всё одной командой** (около 1 минуты):
+
+   ```bash
+   python -m windagent verify
+   ```
+
+   Ожидается 4 строки `PASS`:
+   - тесты (`pytest -q`);
+   - сабмит, заново построенный с нуля во временной папке, совпадает с закоммиченным (`max abs diff 0.00e+00`);
+   - схема сабмита: 672 ч, значения 0–1, P10 ≤ P50 ≤ P90;
+   - часы SCADA — фиксированный UTC+6.
+
+   Ниже те же проверки по шагам.
 
 1. **Тесты:**
 
@@ -371,6 +385,7 @@ streamlit run app/streamlit_app.py
 12. **Интервал P10–P90 для ВЭС** — среднее квантилей турбин. Это допустимо, так как турбины сильно коррелированы (≈ 0.97), но это приближение.
 13. **Бесплатный API Open-Meteo** предназначен для некоммерческого использования. Режим реального времени требует интернета; бэктест работает офлайн из кэша.
 14. **У демо нет авторизации**, запуски LLM в интерфейсе ограничены лимитом.
+15. **GitHub Actions в организации BAITC-Hacks заблокирован биллингом**, поэтому CI-workflow не запускается автоматически. Те же проверки выполняет `python -m windagent verify` (раздел 8).
 
 ---
 

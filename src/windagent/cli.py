@@ -150,6 +150,50 @@ def _cmd_report(args) -> int:
     return 0
 
 
+def _cmd_verify(args) -> int:
+    """The same checks as the CI workflow, in one local command (GitHub Actions may be unavailable)."""
+    import subprocess
+    import tempfile
+
+    import pandas as pd
+
+    from . import config
+    from .clock import detect_clock
+    from .report import compare
+
+    root = config.REPO_ROOT
+    results = []
+    env = {**os.environ, "WINDAGENT_OFFLINE": "1", "PYTHONIOENCODING": "utf-8"}
+    print("1/4 running the test suite (pytest)…", flush=True)
+    t = subprocess.run([sys.executable, "-m", "pytest", "-q"], cwd=root, env=env, capture_output=True, text=True, encoding="utf-8")
+    last = (t.stdout.strip().splitlines() or ["no output"])[-1]
+    results.append(("tests (pytest -q)", t.returncode == 0, last))
+    print("2/4 re-running the February backtest offline (rules policy) in a temporary folder…", flush=True)
+    tmp = tempfile.mkdtemp(prefix="windagent_verify_")
+    b = subprocess.run([sys.executable, "-m", "windagent", "backtest", "--offline", "--policy", "rules"], cwd=root,
+                       env={**env, "WINDAGENT_OUTPUTS_DIR": tmp}, capture_output=True, text=True, encoding="utf-8")
+    committed = config.outputs_dir() / args.site / "test_period" / "submission_day_ahead.csv"
+    fresh = os.path.join(tmp, args.site, "test_period", "submission_day_ahead.csv")
+    if b.returncode == 0 and os.path.exists(fresh):
+        ok, msg = compare(str(committed), fresh)
+    else:
+        ok, msg = False, (b.stderr.strip().splitlines() or ["backtest failed"])[-1]
+    results.append(("reproduce submission from scratch", ok, msg))
+    print("3/4 checking the committed submission…", flush=True)
+    s = pd.read_csv(committed, encoding="utf-8")
+    q = s[["farm_p10", "farm_p50", "farm_p90"]]
+    ok = (len(s) == 672 and s["farm_mean"].notna().all() and bool(q.stack().between(0, 1).all())
+          and bool((q["farm_p10"] <= q["farm_p50"]).all() and (q["farm_p50"] <= q["farm_p90"]).all()))
+    results.append(("submission schema (672 h, 0–1, P10≤P50≤P90)", ok, f"{len(s)} rows"))
+    print("4/4 clock forensics…", flush=True)
+    r = detect_clock(args.site)
+    results.append(("SCADA clock is fixed UTC+6", bool(r["matches_config"]), r["conclusion"][:90]))
+    print()
+    for name, ok, detail in results:
+        print(f"{'PASS' if ok else 'FAIL'}  {name:<48} {detail}")
+    return 0 if all(ok for _, ok, _ in results) else 1
+
+
 def _cmd_compare(args) -> int:
     from .report import compare
 
@@ -194,6 +238,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--forecast", help="forecast CSV (default: outputs/<site>/test_period/submission_day_ahead.csv)")
     add("detect-clock", "SCADA clock-offset forensics", _cmd_detect_clock)
     add("report", "write the generated metrics block into README.md / README.en.md", _cmd_report)
+    add("verify", "run all checks locally: tests, reproduce the submission, schema, clock", _cmd_verify)
     sp = sub.add_parser("compare", help="compare two submission CSVs (CI reproducibility check)")
     sp.add_argument("a")
     sp.add_argument("b")
