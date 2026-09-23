@@ -29,7 +29,7 @@ The temporary directories are dedicated disposable test output. No real API endp
 - **Actual:** exit `2`, but argparse emits multiple usage lines followed by lowercase `windagent: error: ...`. Handled domain errors do follow the contract.
 - **Reproduce:** `.\.venv\Scripts\python.exe -m pytest tests/qa/test_cli_errors.py -q --runxfail -k parser_input_errors --basetemp=.venv/qa-parser-temp`.
 - **Example underlying command:** `python -m windagent forecast --issue "2026-02-05 00:00" --horizon abc`.
-- **Core owner resolution:** pending.
+- **Core owner resolution:** fixed in `16acaf7`; strict xfail marker removed.
 
 ## CLI-BACKTEST-DATE — malformed dates return an unexpected-error code
 
@@ -39,7 +39,7 @@ The temporary directories are dedicated disposable test output. No real API endp
 - **Actual:** malformed start/end dates and an impossible calendar date return exit `1`, for example `ERROR: unexpected DateParseError: Unknown datetime string format, unable to parse: not-a-date`.
 - **Reproduce:** `.\.venv\Scripts\python.exe -m pytest tests/qa/test_cli_errors.py -q --runxfail -k backtest_invalid_dates --basetemp=.venv/qa-dates-temp`.
 - **Example underlying command:** `python -m windagent backtest --start not-a-date --end 2026-02-05 --offline --policy rules`.
-- **Core owner resolution:** pending.
+- **Core owner resolution:** fixed in `16acaf7`; strict xfail marker removed.
 
 ## CLI-ISSUE-NOW — conflicting forecast modes are accepted
 
@@ -49,7 +49,7 @@ The temporary directories are dedicated disposable test output. No real API endp
 - **Actual:** the command chooses live mode and reaches a network lookup instead of reporting the conflict. The test guard blocks it. This also exposes CLI-OFFLINE-NOW below.
 - **Reproduce safely:** `.\.venv\Scripts\python.exe -m pytest tests/qa/test_cli_errors.py -q --runxfail -k issue_and_now --basetemp=.venv/qa-conflict-temp`.
 - **Underlying arguments:** `forecast --issue "2026-02-05 00:00" --now --offline --policy rules`.
-- **Core owner resolution:** pending.
+- **Core owner resolution:** fixed in `16acaf7`; strict xfail marker removed.
 
 ## CLI-OFFLINE-NOW — live forecasting ignores offline mode
 
@@ -59,7 +59,7 @@ The temporary directories are dedicated disposable test output. No real API endp
 - **Actual:** the subprocess attempts `socket.getaddrinfo`. The audit guard blocks it before any external request. With the guard, the command ends in an unexpected-error response; that response is an effect of the harness, not the finding.
 - **Reproduce safely:** `.\.venv\Scripts\python.exe -m pytest tests/qa/test_cli_errors.py -q --runxfail -k now_offline --basetemp=.venv/qa-now-temp`.
 - **Impact:** an operator cannot rely on the documented offline flag for this command.
-- **Core owner resolution:** pending.
+- **Core owner resolution:** fixed in `16acaf7`; strict xfail marker removed.
 
 ## CLI-MISSING-DATA — absent SCADA or weather cache causes an unexpected failure
 
@@ -70,7 +70,7 @@ The temporary directories are dedicated disposable test output. No real API endp
 - **After `cdcbe11`:** messages identify missing SCADA or absent offline weather, but both commands return exit `4` rather than `3`. Example: `ERROR: No forecast could be produced for 2026-02-05 00:00: SCADA file not found: <temporary-directory>/raw/turbine_1.csv`. The user-facing message improved; the exit-code contract remains unmet.
 - **Reproduce:** `.\.venv\Scripts\python.exe -m pytest tests/qa/test_cli_errors.py -q --runxfail -k "missing_scada or missing_weather" --basetemp=.venv/qa-data-temp`.
 - **Underlying arguments:** `forecast --issue "2026-02-05 00:00" --offline --policy rules`, with the partially populated temporary data directory supplied by the test. Neither reproduction attempts a network connection.
-- **Core owner resolution:** pending.
+- **Core owner resolution:** fixed in `16acaf7`; strict xfail marker removed.
 
 ## ARTIFACT-REPLAY-DRIFT — saved artifacts and current model describe different snapshots
 
@@ -79,7 +79,7 @@ The temporary directories are dedicated disposable test output. No real API endp
 - **Expected:** the committed model should reproduce the corresponding committed forecast, and the README results block should reflect the current metrics. This is the reproduction promise in the README.
 - **Actual:** the offline replay of the first issue differs from the saved forecast. Across all entities/versions, the maximum absolute difference is `0.0712` in `mean` (normalized power). The current metrics file has day-ahead MAE `0.1680`, while the README block still says `0.169`. Presentation documents use the current metrics and label saved run values as historical.
 - **Reproduce:** `.\.venv\Scripts\python.exe -m pytest tests/qa/test_cli_workflows.py -q --runxfail -k matches_committed_artifact --basetemp=.venv/qa-replay-temp`.
-- **Core owner resolution:** pending regeneration or an explicit, consistent artifact versioning policy. QA did not overwrite the saved results or edit README.
+- **Core owner resolution:** fixed in `6a515a9` (backtest, submission and README metrics regenerated with the current model); strict xfail marker removed in `16acaf7`.
 
 ## CLI-OUTPUT-LOCATION — printed forecast destination ignores the configured output root
 
@@ -88,7 +88,7 @@ The temporary directories are dedicated disposable test output. No real API endp
 - **Expected:** the success message should identify the effective output directory.
 - **Actual:** files are correctly written beneath the override, but stdout always prints `written to outputs/shelek/adhoc/<issue_id>/`. Following that path can open the wrong result or find no file.
 - **Reproduce:** `.\.venv\Scripts\python.exe -m pytest tests/qa/test_cli_workflows.py -q --runxfail -k effective_output_directory --basetemp=.venv/qa-printed-path-temp`.
-- **Core owner resolution:** pending.
+- **Core owner resolution:** fixed in `16acaf7`; strict xfail marker removed.
 
 ## Resolved: CLI-OUTPUTS-DIR — undocumented implementation option removed from contract
 
