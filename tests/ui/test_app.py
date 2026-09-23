@@ -7,13 +7,16 @@ Agent doubles stay in this module; no production prediction is fabricated.
 from __future__ import annotations
 
 import datetime as dt
+from copy import deepcopy
 import json
+import re
 import shutil
 import socket
 import sys
 from pathlib import Path
 
 import pytest
+import pandas as pd
 import requests
 import streamlit as st
 from streamlit.testing.v1 import AppTest
@@ -71,7 +74,7 @@ def choice(app: AppTest, key: str, widget_type: str = "selectbox"):
 def visible_text(app: AppTest) -> str:
     """Read human-facing text without coupling tests to layout containers."""
     text = []
-    for element_type in ("markdown", "text", "caption", "code", "info", "warning", "error", "success"):
+    for element_type in ("title", "header", "subheader", "markdown", "text", "caption", "code", "json", "info", "warning", "error", "success"):
         text.extend(str(element.value) for element in app.get(element_type))
     return "\n".join(text)
 
@@ -182,8 +185,7 @@ def test_live_forecast_defaults_to_official_clock_but_allows_manual_override(
     assert not app.exception, [element.value for element in app.exception]
     assert calls == [("shelek", "rules")]
     assert choice(app, "display_clock").value == "official"
-    assert "official Kazakhstan time" in visible_text(app)
-    assert revision_chart(app)["layout"]["xaxis"]["title"]["text"] == "Official Kazakhstan time (UTC+5)"
+    assert revision_chart(app)["layout"]["xaxis"]["title"]["text"] == "Astana time (UTC+5)"
 
     for selected_clock, expected_axis in (("utc", "UTC"), ("data", "Data clock (UTC+6)")):
         choice(app, "display_clock").set_value(selected_clock).run()
@@ -238,7 +240,7 @@ def test_language_switch_and_stale_browser_labels_never_reach_api(
     for key, kind in (("display_clock", "selectbox"), ("agent_policy", "selectbox"),
                       ("issue_shelek_runs", "selectbox"), ("run_kind", "radio")):
         assert choice(app, key, kind).key != old_keys[key]
-    assert choice(app, "run_kind", "radio").options == ["Historical", "Live"]
+    assert choice(app, "run_kind", "radio").options == ["Test period (February 2026)", "My runs", "Forecast now"]
     assert choice(app, "display_clock").value == "official"
     assert choice(app, "agent_policy").value == "rules"
     assert choice(app, "issue_shelek_runs").value == "2026-02-01_0000"
@@ -271,14 +273,150 @@ def test_language_switch_and_stale_browser_labels_never_reach_api(
     assert seen_policies == ["rules"]
 
 
-def test_issue_option_label_updates_when_display_clock_changes(fixture_outputs: Path):
+def test_issue_option_label_keeps_data_clock_date_when_display_clock_changes(fixture_outputs: Path):
     app = start_app()
     original = choice(app, "issue_shelek_runs")
-    original_value, original_key = original.value, original.key
+    original_value, original_key, original_labels = original.value, original.key, original.options
     choice(app, "display_clock").set_value("utc").run()
 
     issue = choice(app, "issue_shelek_runs")
     assert not app.exception
     assert issue.value == original_value
-    assert issue.key != original_key
-    assert all(label.endswith(" · UTC") for label in issue.options)
+    assert issue.key == original_key
+    assert issue.options == original_labels
+    assert "1 февраля 2026, 00:00" in issue.format_func(issue.value)
+
+
+def test_default_issue_is_first_test_day_and_versions_have_human_labels(fixture_outputs: Path):
+    app = start_app()
+
+    assert choice(app, "issue_shelek_runs").value == "2026-02-01_0000"
+    assert app.date_input(key="agent_issue_date").value == dt.date(2026, 1, 31)
+    options = choice(app, "version_shelek_2026-02-01_0000", "radio").options
+    assert any("00:00" in label and "первич" in label.lower() for label in options)
+    assert any("06:00" in label and "уточнен" in label.lower() for label in options)
+    assert not any(re.fullmatch(r"v\d+", label) for label in options)
+
+    app.selectbox(key="language").set_value("EN").run()
+    assert len(app.tabs) == 5
+    assert "Run locally" in visible_text(app)
+    options = choice(app, "version_shelek_2026-02-01_0000", "radio").options
+    assert any("00:00" in label and "initial" in label.lower() for label in options)
+    assert any("06:00" in label and "update" in label.lower() for label in options)
+
+
+def test_single_version_has_explanation_instead_of_redundant_selector(fixture_outputs: Path, monkeypatch: pytest.MonkeyPatch):
+    original = api.load_run
+
+    def load_run(site, issue, kind="runs"):
+        result = deepcopy(original(site, issue, kind))
+        result["forecast"] = result["forecast"].loc[result["forecast"]["version"].eq(1)]
+        result["weather"] = result["weather"].loc[result["weather"]["version"].eq(1)]
+        result["meta"]["versions"] = [record for record in result["meta"]["versions"] if record["version"] == 1]
+        return result
+
+    monkeypatch.setattr(api, "load_run", load_run)
+    app = start_app()
+
+    assert not app.error
+    assert not any((widget.key or "").startswith("version_shelek_") for widget in app.radio)
+    assert "Уточнение не потребовалось" in visible_text(app)
+
+
+def test_my_runs_source_loads_adhoc_outputs_with_raw_api_identifiers(fixture_outputs: Path, monkeypatch: pytest.MonkeyPatch):
+    issue_id = "2026-02-01_0000"
+    shutil.copytree(fixture_outputs / "shelek" / "runs" / issue_id,
+                    fixture_outputs / "shelek" / "adhoc" / issue_id)
+    seen = []
+    original = api.load_run
+
+    def load_run(site, issue, kind="runs"):
+        seen.append((site, issue, kind))
+        return original(site, issue, kind)
+
+    monkeypatch.setattr(api, "load_run", load_run)
+    app = start_app()
+    app.selectbox(key="language").set_value("EN")
+    choice(app, "run_kind", "radio").set_value("adhoc").run()
+
+    assert not app.exception
+    assert not app.error
+    assert choice(app, "run_kind", "radio").value == "adhoc"
+    assert choice(app, "issue_shelek_adhoc").value == issue_id
+    assert ("shelek", issue_id, "adhoc") in seen
+
+
+def test_forecast_kpis_follow_selected_version_not_issue_summary(fixture_outputs: Path, monkeypatch: pytest.MonkeyPatch):
+    from app.i18n import tr
+
+    original = api.load_run
+    per_version = {
+        1: {"capacity_factor": 0.25, "energy_norm_h": 12.5, "max_ramp_3h": 0.1, "mean_band_width": 0.4},
+        2: {"capacity_factor": 0.75, "energy_norm_h": 31.5, "max_ramp_3h": 0.2, "mean_band_width": 0.2},
+    }
+
+    def load_run(site, issue, kind="runs"):
+        result = deepcopy(original(site, issue, kind))
+        result["meta"]["kpis"] = {key: 999 for key in per_version[1]}
+        for record in result["meta"]["versions"]:
+            record["kpis"] = per_version[record["version"]]
+        return result
+
+    monkeypatch.setattr(api, "load_run", load_run)
+    app = start_app()
+    app.selectbox(key="language").set_value("EN").run()
+    for version in (1, 2):
+        choice(app, "version_shelek_2026-02-01_0000", "radio").set_value(version).run()
+        assert not app.exception
+        metrics = {element.label: element.value for element in app.tabs[0].get("metric")}
+        expected = per_version[version]
+        for key, multiplier in (("capacity_factor", 100), ("energy_norm_h", 1),
+                                ("max_ramp_3h", 100), ("mean_band_width", 50)):
+            displayed = float(re.search(r"-?\d+(?:\.\d+)?", metrics[tr(key, "EN")]).group())
+            assert displayed == pytest.approx(expected[key] * multiplier)
+
+
+@pytest.mark.parametrize("missing", ["weather_values", "version_metadata", "metadata_timestamps"])
+def test_weather_remains_usable_when_model_or_run_provenance_is_missing(
+    fixture_outputs: Path, monkeypatch: pytest.MonkeyPatch, missing: str,
+):
+    from app.i18n import tr
+    from app.presentation import model_name
+
+    original = api.load_run
+    unknown_model = "ecmwf_ifs025"
+
+    def load_run(site, issue, kind="runs"):
+        result = deepcopy(original(site, issue, kind))
+        weather = result["weather"].copy()
+        if missing == "weather_values":
+            weather.loc[weather["model"].eq(unknown_model), "init_time_utc"] = pd.NaT
+            weather.loc[weather.index[-1], "model"] = None
+        else:
+            weather = weather.drop(columns=["init_time_utc"])
+            for record in result["meta"]["versions"]:
+                if missing == "version_metadata":
+                    record.pop("runs_used", None)
+                else:
+                    record["runs_used"] = {
+                        unknown_model: [None, pd.NaT, "not a timestamp"],
+                        "gfs_seamless": [None, "2026-01-31T06:00:00Z"],
+                    }
+        result["weather"] = weather
+        return result
+
+    monkeypatch.setattr(api, "load_run", load_run)
+    app = start_app()
+
+    assert not app.error
+    chart = next(element for element in app.tabs[0].get("plotly_chart") if element.proto.id.endswith("-weather_chart"))
+    spec = json.loads(chart.proto.spec)
+    assert spec["data"], "Missing provenance must not discard otherwise valid weather curves"
+    assert all(trace.get("legendgroup") not in ("None", "nan", "<NA>") for trace in spec["data"])
+    assert any("n/a" in str(trace.get("text", "")) for trace in spec["data"])
+    if missing != "version_metadata":
+        provenance = next(element.value for element in app.tabs[0].get("dataframe")
+                          if tr("weather_run", "RU") in element.value.columns)
+        unknown = provenance.loc[provenance[tr("weather_model", "RU")].eq(model_name(unknown_model, "RU"))]
+        assert not unknown.empty
+        assert unknown[tr("weather_run", "RU")].eq("n/a").all()

@@ -1,15 +1,15 @@
 # UI integration requests
 
-## Issue metadata is not version-specific
+## Version-specific metadata — resolved
 
 - **What:** `windagent.api.load_run`, schema R `kpis`, `models_used`, `weather_source`.
-- **Expected vs actual:** Selecting v1 or v2 changes the plotted forecast correctly, but the interface provides issue-level KPIs and provenance only. The UI labels KPIs as issue metadata; it does not invent selected-version figures. Schema W version association was added in core commit `a55fec6`; the UI now filters weather by the selected version and displays schema F `version_as_of_utc` with the remaining forecast-hour count.
+- **Resolution:** The core now supplies optional `versions[].kpis`, `models_used` and `runs_used`. Forecast and agent cards read the selected version's KPIs; absent legacy values show `n/a` rather than borrowing another version's summary. Weather charts and provenance use schema W's version association and the selected display clock.
 - **Reproduce:** `WINDAGENT_OUTPUTS_DIR=tests/fixtures/outputs streamlit run app/streamlit_app.py`; switch between v1 and v2. On PowerShell set the environment variable separately.
-- **Severity:** minor; the current contract is supported. A future optional `kpis` and provenance inside each `versions[]` entry would permit exact version-specific cards.
+- **Severity:** resolved.
 
 ## Verification environment — resolved
 
 - **What:** local `.venv` interpreter.
-- **Expected vs actual:** The project contract supports Python 3.11–3.13. The original environment ran Python 3.14.5. The isolated `hackaton-ui` checkout now has its own Python 3.12.14 environment, installed directly from the unchanged requirements file. All 49 offline UI tests pass there. Real-output AppTest checks also pass in RU and EN with networking blocked and no LLM credentials: all five tabs, eight charts and seven tables, without exceptions or UI errors. UI modules also parse with Python 3.11 syntax rules.
+- **Expected vs actual:** The project contract supports Python 3.11–3.13. The original environment ran Python 3.14.5. The isolated `hackaton-ui` checkout now has its own Python 3.12.14 environment, installed directly from the unchanged requirements file. Offline UI tests cover all five tabs, real API fixture loading, empty outputs, translated selections, clocks, version labels and KPIs, agent timelines, and analytical safeguards.
 - **Reproduce:** `.venv\Scripts\python.exe --version`.
 - **Severity:** resolved; no dependency files changed by UI.

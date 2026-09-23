@@ -69,7 +69,9 @@ def test_farm_and_turbine_forecasts_preserve_hourly_gaps():
 
     figure = forecast_figure(pd.DataFrame(rows), pd.DataFrame(), "EN", 0, "UTC", show_turbines=True)
 
-    assert {trace.name for trace in figure.data} == {tr("farm", "EN"), "t1"}
+    assert len(figure.data) == 2
+    assert any(trace.name == tr("farm", "EN") for trace in figure.data)
+    assert any("1" in trace.name for trace in figure.data if trace.name != tr("farm", "EN"))
     for trace in figure.data:
         assert len(trace.x) == 3
         assert pd.isna(trace.y[1])
@@ -114,3 +116,42 @@ def test_weather_missing_version_values_are_not_assigned_to_requested_version():
     selected = forecast_module.select_weather_for_version(weather, 2)
 
     assert selected["ws100"].tolist() == [8.0]
+
+
+def test_percentage_axis_preserves_fractional_prediction_values():
+    source = pd.DataFrame({
+        "target_time_utc": pd.date_range("2026-02-01T18:00:00Z", periods=2, freq="h"),
+        "entity": "farm", "mean": [0.25, 0.75],
+    })
+
+    figure = forecast_figure(source, pd.DataFrame(), "EN", 6, "UTC+6")
+    farm = next(trace for trace in figure.data if trace.name == tr("farm", "EN"))
+
+    assert list(farm.y) == [0.25, 0.75]
+    assert figure.layout.yaxis.tickformat.endswith("%")
+    assert figure.layout.legend.y < 0
+
+
+@pytest.mark.parametrize("lang, time_column, mean_column, turbine_column, part_column", [
+    ("EN", "Time", "Farm forecast, %", "Turbine 1, %", "Part"),
+    ("RU", "Время", "Прогноз ВЭС, %", "Турбина 1, %", "Часть"),
+])
+def test_readable_hourly_table_uses_selected_clock_and_percentages_without_changing_raw_data(
+    lang, time_column, mean_column, turbine_column, part_column,
+):
+    rows = [{"target_time_utc": "2026-01-31T18:00:00Z", "entity": entity, "mean": value,
+             "p10": 0.12, "p90": 0.63, "product": "intraday", "issue_id": "2026-02-01_0000", "version": 1}
+            for entity, value in (("farm", 0.375), ("t1", 0.35), ("t2", 0.4))]
+    source = pd.DataFrame(rows)
+    original = source.copy(deep=True)
+
+    readable = forecast_module.readable_hourly(source, lang, 5)
+
+    assert len(readable) == 1
+    assert readable.iloc[0][time_column] == "2026-01-31 23:00"
+    assert readable.iloc[0][mean_column] == pytest.approx(37.5)
+    assert readable.iloc[0][turbine_column] == pytest.approx(35.0)
+    assert readable.iloc[0]["P10–P90, %"] == "12–63"
+    assert readable.iloc[0][part_column].lower() == ("today" if lang == "EN" else "сегодня")
+    assert not {"issue_id", "version", "entity", "target_time_utc"}.intersection(readable.columns)
+    pd.testing.assert_frame_equal(source, original)
