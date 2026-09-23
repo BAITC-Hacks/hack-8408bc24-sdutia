@@ -36,6 +36,8 @@ class ForecastModel:
     models: dict = field(default_factory=dict)
     cutoff_utc: str | None = None
     n_train: int = 0
+    interval_scale: float = 1.0          # P10/P90 distance from P50 × scale (calibrated on validation folds)
+    calibration: dict = field(default_factory=dict)
 
     # ---- feature augmentation -------------------------------------------------------------
     def _augment(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -91,7 +93,10 @@ class ForecastModel:
         for name, mdl in self.models.items():
             out[name] = np.clip(mdl.predict(M), 0.0, 1.0)
         q = np.sort(out[["p10", "p50", "p90"]].to_numpy(), axis=1)   # no crossing quantiles
-        out["p10"], out["p50"], out["p90"] = q[:, 0], q[:, 1], q[:, 2]
+        k = float(getattr(self, "interval_scale", 1.0) or 1.0)
+        out["p10"] = np.clip(q[:, 1] - k * (q[:, 1] - q[:, 0]), 0.0, 1.0)
+        out["p50"] = q[:, 1]
+        out["p90"] = np.clip(q[:, 1] + k * (q[:, 2] - q[:, 1]), 0.0, 1.0)
         return out
 
     def predict_powercurve(self, rows: pd.DataFrame, prefer=("aifs", "ifs", "icon", "gfs")) -> pd.Series:

@@ -64,6 +64,26 @@ def _scores(y: np.ndarray, f: np.ndarray) -> dict:
             "n": int(len(y))}
 
 
+def calibrate_interval_scale(pred: pd.DataFrame, data_clock_offset_h: int, target: float = 0.80) -> dict:
+    """Smallest k such that [p50 - k(p50-p10), p50 + k(p90-p50)] covers >= target of day-ahead farm
+    actuals on all folds except the last; the last fold is kept as an out-of-sample check."""
+    f = pred[(pred["entity"] == "farm") & pred["actual"].notna() & (pred["lead_h"] >= 24) & (pred["lead_h"] < 48)].copy()
+    if f.empty:
+        return {"k": 1.0, "note": "no validation predictions"}
+    month = (pd.to_datetime(f["issue_time_utc"], utc=True) + pd.Timedelta(hours=data_clock_offset_h)).dt.strftime("%Y-%m")
+    last = sorted(month.unique())[-1]
+    fit, chk = f[month != last], f[month == last]
+
+    def cov(d, k):
+        lo, hi = d["p50"] - k * (d["p50"] - d["p10"]), d["p50"] + k * (d["p90"] - d["p50"])
+        return float(((d["actual"] >= lo) & (d["actual"] <= hi)).mean())
+
+    k = next((round(k, 2) for k in np.arange(1.0, 2.51, 0.01) if cov(fit, k) >= target), 2.5)
+    return {"k": k, "target_coverage": target, "fitted_on_months": sorted(month[month != last].unique()),
+            "check_month": last, "coverage_fit_before": round(cov(fit, 1.0), 3), "coverage_fit_after": round(cov(fit, k), 3),
+            "coverage_check_before": round(cov(chk, 1.0), 3), "coverage_check_after": round(cov(chk, k), 3)}
+
+
 def run_validation(site_key: str = "shelek", horizon_h: int = config.HORIZON_H, log=print) -> dict:
     site = config.get_site(site_key)
     t0 = time.time()
@@ -106,6 +126,8 @@ def run_validation(site_key: str = "shelek", horizon_h: int = config.HORIZON_H, 
     metrics = _metrics(farm, site, issues_n=int(allp["issue_time_utc"].nunique()))
     metrics["leave_one_turbine_out"] = loto
     metrics["validation"]["last_observation_utc"] = iso_z(last_obs)
+    metrics["interval_calibration"] = calibrate_interval_scale(pd.concat([allp, farm], ignore_index=True),
+                                                               site.data_clock_utc_offset_h)
     _write(site, metrics, allp, farm)
     log(f"validation done in {time.time() - t0:.0f}s")
     return metrics

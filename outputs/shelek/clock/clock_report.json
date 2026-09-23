@@ -1,0 +1,66 @@
+{
+  "site": "shelek",
+  "configured_offset_h": 6,
+  "estimated_offset_h": 6,
+  "matches_config": true,
+  "switch_continuity": {
+    "2024-03-01 00:00": {
+      "records": 37,
+      "expected": 37,
+      "duplicates": 0,
+      "irregular_steps": 0,
+      "note": "Kazakhstan unified time: UTC+6 regions moved to UTC+5"
+    }
+  },
+  "sun_peak_clock_time_by_year": {
+    "Apr-Sep": {
+      "2023": "16:25",
+      "2025": "16:35"
+    },
+    "March": {
+      "2023": "16:32",
+      "2024": "16:29",
+      "2025": "16:37"
+    },
+    "Jan-Feb": {
+      "2024": "16:03",
+      "2025": "16:13"
+    }
+  },
+  "sun_peak_max_shift_min": 10,
+  "nwp_best_offset_by_quarter": {
+    "2024Q1": {
+      "best_offset_h": 5.33,
+      "corr": 0.806
+    },
+    "2024Q2": {
+      "best_offset_h": 5.67,
+      "corr": 0.832
+    },
+    "2024Q3": {
+      "best_offset_h": 5.67,
+      "corr": 0.739
+    },
+    "2024Q4": {
+      "best_offset_h": 5.5,
+      "corr": 0.814
+    },
+    "2025Q1": {
+      "best_offset_h": 5.83,
+      "corr": 0.784
+    },
+    "2025Q2": {
+      "best_offset_h": 6.0,
+      "corr": 0.734
+    },
+    "2025Q3": {
+      "best_offset_h": 6.17,
+      "corr": 0.728
+    },
+    "2025Q4": {
+      "best_offset_h": 5.83,
+      "corr": 0.826
+    }
+  },
+  "conclusion": "Fixed UTC+6 logger clock; no change at the 2024-03-01 switch (no duplicate/gap at the switch, temperature-peak time stable within 10 min across years)."
+}

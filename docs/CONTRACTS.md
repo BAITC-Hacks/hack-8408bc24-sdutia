@@ -79,6 +79,7 @@ Only the core owner changes it. Change requests go to `docs/requests/` (one file
 | `issue_id` | str | |
 | `version` | int | |
 | `issue_time_utc` | str | ISO Z |
+| `version_as_of_utc` | str | ISO Z. The clock at which this version was computed (= issue time for v1) |
 | `target_time_utc` | str | ISO Z |
 | `target_time_data_clock` | str | UTC+6 |
 | `target_time_kz_official` | str | UTC+5 |
@@ -89,12 +90,18 @@ Only the core owner changes it. Change requests go to `docs/requests/` (one file
 | `p10`, `p50`, `p90` | float | Quantiles, with `p10 ≤ p50 ≤ p90` |
 | `mw_mean` | float or empty | Only if `rated_mw` is set |
 
+**Row counts:**
+- Version 1 has `horizon_h` rows per entity (48 by default).
+- A later version re-forecasts only the **remaining** hours of the same window, i.e. target times ≥ its `version_as_of_utc`. With the default 6 h update, v2 has 42 rows per entity.
+- `lead_h` and `product` are always measured from the original issue time.
+
 ### Schema W: weather inputs
 
 | Column | Type | Notes |
 |---|---|---|
 | `issue_id` | str | |
-| `target_time_utc` | str | |
+| `version` | int | The forecast version these inputs were used for |
+| `target_time_utc` | str | Valid time of the weather value (hours H and H+1 feed target hour H) |
 | `model` | str | e.g. `ecmwf_aifs025_single` |
 | `init_time_utc` | str | Start time of the weather-model run used |
 | `offset_days` | int | Previous-runs offset N |

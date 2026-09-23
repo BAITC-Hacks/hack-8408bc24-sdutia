@@ -1,0 +1,72 @@
+{
+  "site": "shelek",
+  "issue_id": "2026-02-19_0000",
+  "issue_time_utc": "2026-02-18T18:00:00Z",
+  "issue_time_data_clock": "2026-02-19 00:00",
+  "created_at_utc": "2026-09-23T09:59:26Z",
+  "policy": "rules",
+  "provider": "none",
+  "model": null,
+  "horizon_h": 48,
+  "versions": [
+    {
+      "version": 1,
+      "as_of_utc": "2026-02-18T18:00:00Z",
+      "reason": "initial"
+    },
+    {
+      "version": 2,
+      "as_of_utc": "2026-02-19T00:00:00Z",
+      "reason": "new runs: ecmwf_aifs025_single 2026-02-18T12:00:00Z, ecmwf_ifs025 2026-02-18T12:00:00Z, icon_seamless 2026-02-18T18:00:00Z, gfs_seamless 2026-02-18T12:00:00Z"
+    }
+  ],
+  "models_used": [
+    "ecmwf_aifs025_single",
+    "ecmwf_ifs025",
+    "gfs_seamless",
+    "icon_seamless"
+  ],
+  "excluded_models": [],
+  "runs_used": {
+    "ecmwf_aifs025_single": [
+      "2026-02-17T12:00:00Z",
+      "2026-02-17T18:00:00Z",
+      "2026-02-18T00:00:00Z",
+      "2026-02-18T06:00:00Z"
+    ],
+    "ecmwf_ifs025": [
+      "2026-02-17T12:00:00Z",
+      "2026-02-17T18:00:00Z",
+      "2026-02-18T00:00:00Z",
+      "2026-02-18T06:00:00Z"
+    ],
+    "gfs_seamless": [
+      "2026-02-17T12:00:00Z",
+      "2026-02-17T18:00:00Z",
+      "2026-02-18T00:00:00Z",
+      "2026-02-18T06:00:00Z"
+    ],
+    "icon_seamless": [
+      "2026-02-17T18:00:00Z",
+      "2026-02-18T00:00:00Z",
+      "2026-02-18T06:00:00Z",
+      "2026-02-18T12:00:00Z"
+    ]
+  },
+  "weather_source": "live",
+  "forecast_model": "production model (cutoff 2026-01-30T18:00:00Z)",
+  "nowcast": null,
+  "warnings": [
+    "low confidence: wide P10–P90 band or strong model disagreement"
+  ],
+  "kpis": {
+    "energy_norm_h": 13.88,
+    "capacity_factor": 0.33,
+    "max_ramp_3h": 0.54,
+    "mean_band_width": 0.622,
+    "confidence": "low",
+    "revision_mae_v2_vs_v1": 0.034
+  },
+  "actuals_available": false,
+  "errors": null
+}

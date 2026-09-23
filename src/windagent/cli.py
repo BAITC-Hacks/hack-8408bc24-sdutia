@@ -3,16 +3,23 @@
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import sys
+import time
 import traceback
 
 from .errors import WindAgentError
 
 
-def _not_ready(name: str):
-    def run(_args):
-        raise WindAgentError(f"Command '{name}' is under construction in this build.")
-    return run
+def _site(args):
+    from . import config
+    return config.get_site(args.site)
+
+
+def _apply_offline(args) -> None:
+    if getattr(args, "offline", False):
+        os.environ["WINDAGENT_OFFLINE"] = "1"
 
 
 def _cmd_info(args) -> int:
@@ -21,8 +28,122 @@ def _cmd_info(args) -> int:
     for site in api.list_sites():
         info = api.site_info(site)
         print(f"{site}: {info['name']} | turbines: {', '.join(t['id'] for t in info['turbines'])} "
-              f"| data clock UTC+{info['data_clock_utc_offset_h']}")
+              f"| data clock UTC+{info['data_clock_utc_offset_h']} | issue range {info['issue_range_data_clock']}")
+    print("LLM:", api.llm_status())
     return 0
+
+
+def _cmd_fetch_history(args) -> int:
+    from . import weather
+
+    counts = weather.fetch_history(_site(args), args.start, args.end)
+    print(json.dumps(counts, indent=2))
+    return 0
+
+
+def _cmd_validate(args) -> int:
+    from . import validation
+
+    m = validation.run_validation(args.site)
+    da = m["by_product"]["day_ahead"]
+    print(f"day-ahead farm MAE: model {da['model']['mae']} | persistence {da['persistence']['mae']} | "
+          f"climatology {da['climatology']['mae']} | NWP power curve {da['nwp_powercurve']['mae']}")
+    print(f"skill: {m['skill_pct']} | interval calibration k={m['interval_calibration'].get('k')}")
+    return 0
+
+
+def _cmd_train(args) -> int:
+    from . import forecast
+    from .timeutil import parse_clock_time
+
+    s = _site(args)
+    cutoff = parse_clock_time(forecast.PRODUCTION_CUTOFF_DATA_CLOCK, s.data_clock_utc_offset_h)
+    m = forecast.train_model(s, cutoff)
+    print("saved", m.save(forecast.production_model_path(s)))
+    return 0
+
+
+def _cmd_backtest(args) -> int:
+    from .agent import runner
+
+    _apply_offline(args)
+    t0 = time.time()
+    res = runner.backtest(args.site, args.start, args.end, policy=args.policy, offline=args.offline or None)
+    print(json.dumps(res, indent=2), f"\nbacktest finished in {time.time() - t0:.0f}s")
+    return 0
+
+
+def _cmd_forecast(args) -> int:
+    from .agent import runner
+
+    _apply_offline(args)
+    printer = (lambda e: print(f"[{e['seq']:02d}] {e['type']:<11} {e.get('tool') or '':<18} {e['summary']}")) if args.verbose else None
+    if args.now:
+        r = runner.run_now(args.site, policy=args.policy, on_event=printer, horizon_h=args.horizon)
+    else:
+        if not args.issue:
+            from .errors import InputError
+            raise InputError("Give --issue \"YYYY-MM-DD HH:MM\" (data clock) or --now.",
+                             "Укажите --issue \"ГГГГ-ММ-ДД ЧЧ:ММ\" (время данных) или --now.")
+        r = runner.run_issue(args.site, args.issue, policy=args.policy, on_event=printer, horizon_h=args.horizon,
+                             offline=args.offline or None)
+    m = r["meta"]
+    print(f"issue {m['issue_id']} | policy {m['policy']}/{m['provider']} | versions {len(m['versions'])} | "
+          f"models {m['models_used']} | KPIs {m['kpis']}")
+    print(r["analysis"])
+    return 0
+
+
+def _cmd_all(args) -> int:
+    t0 = time.time()
+    print("== 1/3 validate (walk-forward)"), _cmd_validate(args)
+    print("== 2/3 train production model"), _cmd_train(args)
+    args.start, args.end = "2026-01-31", "2026-02-28"
+    print("== 3/3 backtest test period"), _cmd_backtest(args)
+    print(f"all done in {time.time() - t0:.0f}s")
+    return 0
+
+
+def _cmd_evaluate(args) -> int:
+    from .errors import InputError
+    from .evaluate import evaluate
+
+    paths = {}
+    for item in args.actuals or []:
+        if "=" not in item:
+            raise InputError(f"--actuals must look like t1=PATH, got '{item}'.", f"--actuals должен иметь вид t1=ПУТЬ, получено '{item}'.")
+        k, v = item.split("=", 1)
+        paths[k.strip()] = v.strip()
+    res = evaluate(args.site, paths, args.forecast)
+    for ent, m in res["metrics"].items():
+        print(f"{ent:>5}: MAE {m['mae']} | RMSE {m['rmse']} | bias {m['bias']} | n {m['n']}"
+              + (f" | P10–P90 coverage {m['coverage_p10_p90']}" if m.get("coverage_p10_p90") is not None else ""))
+    print(f"best lag: {res['best_lag_h']:+d} h")
+    if res["warning"]:
+        print("WARNING:", res["warning"])
+        for ent, m in (res["metrics_realigned"] or {}).items():
+            print(f"  realigned {ent:>5}: MAE {m['mae']} | RMSE {m['rmse']}")
+    print("written: outputs/<site>/evaluation/evaluation.json")
+    return 0
+
+
+def _cmd_detect_clock(args) -> int:
+    from .clock import detect_clock
+
+    r = detect_clock(args.site)
+    print(f"configured UTC+{r['configured_offset_h']} | estimated UTC+{r['estimated_offset_h']} | matches: {r['matches_config']}")
+    for t, c in r["switch_continuity"].items():
+        print(f"at {t}: {c['records']}/{c['expected']} records, duplicates {c['duplicates']}, irregular steps {c['irregular_steps']}")
+    for label, per_year in r["sun_peak_clock_time_by_year"].items():
+        print(f"temperature peak ({label}): " + ", ".join(f"{y} {t}" for y, t in per_year.items()))
+    print(r["conclusion"])
+    return 0
+
+
+def _not_ready(name: str):
+    def run(_args):
+        raise WindAgentError(f"Command '{name}' is under construction in this build.")
+    return run
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -30,26 +151,37 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--debug", action="store_true", help="show tracebacks on errors")
     sub = p.add_subparsers(dest="command", required=True)
 
-    def add(name, help_text, handler, site=True):
+    def add(name, help_text, handler):
         sp = sub.add_parser(name, help=help_text)
-        if site:
-            sp.add_argument("--site", default="shelek")
+        sp.add_argument("--site", default="shelek")
         sp.set_defaults(handler=handler)
         return sp
 
-    add("info", "show configured sites", _cmd_info, site=False)
-    for name, help_text in [
-        ("all", "end-to-end reproduction"),
-        ("fetch-history", "download archived weather forecasts into the cache"),
-        ("train", "train the forecasting models"),
-        ("validate", "walk-forward validation"),
-        ("backtest", "rolling agent run over the test period"),
-        ("forecast", "single issue or live forecast"),
-        ("evaluate", "score a forecast against actuals"),
-        ("detect-clock", "SCADA clock-offset forensics"),
-        ("report", "insert metrics into README"),
-    ]:
-        add(name, help_text, _not_ready(name))
+    add("info", "show configured sites and LLM status", _cmd_info)
+    sp = add("fetch-history", "download archived weather forecasts into the cache", _cmd_fetch_history)
+    sp.add_argument("--start", default="2024-02-01")
+    sp.add_argument("--end", default="2026-03-03")
+    add("train", "train the production model (cutoff = first test issue)", _cmd_train)
+    add("validate", "walk-forward validation → outputs/<site>/validation", _cmd_validate)
+    for name, handler, help_text in (("backtest", _cmd_backtest, "rolling agent run over the test period"),
+                                     ("all", _cmd_all, "end-to-end: validate → train → backtest")):
+        sp = add(name, help_text, handler)
+        sp.add_argument("--start", default="2026-01-31")
+        sp.add_argument("--end", default="2026-02-28")
+        sp.add_argument("--policy", default="auto", choices=["auto", "llm", "rules"])
+        sp.add_argument("--offline", action="store_true", help="use the committed weather cache only")
+    sp = add("forecast", "single issue (--issue) or live (--now)", _cmd_forecast)
+    sp.add_argument("--issue", help='issue time on the data clock, e.g. "2026-02-10 00:00"')
+    sp.add_argument("--now", action="store_true")
+    sp.add_argument("--horizon", type=int, default=48)
+    sp.add_argument("--policy", default="auto", choices=["auto", "llm", "rules"])
+    sp.add_argument("--offline", action="store_true")
+    sp.add_argument("--verbose", "-v", action="store_true", help="print the agent trace live")
+    sp = add("evaluate", "score a forecast against actuals (organizers' CSV format)", _cmd_evaluate)
+    sp.add_argument("--actuals", action="append", metavar="TURBINE=PATH", help="repeat per turbine, e.g. --actuals t1=feb_t1.csv")
+    sp.add_argument("--forecast", help="forecast CSV (default: outputs/<site>/test_period/submission_day_ahead.csv)")
+    add("detect-clock", "SCADA clock-offset forensics", _cmd_detect_clock)
+    add("report", "insert metrics into README", _not_ready("report"))
     return p
 
 

@@ -25,3 +25,7 @@ outputs/**/live/
 
 # fold models from validation are rebuilt on demand
 models/**/model_cutoff_*.pkl
+
+# any local env file variant (keys!) — only the template is committed
+.env.*
+!.env.example

@@ -1,6 +1,6 @@
 {
   "site": "shelek",
-  "generated_at_utc": "2026-09-23T09:41:55Z",
+  "generated_at_utc": "2026-09-23T09:57:54Z",
   "validation": {
     "folds": [
       "2025-10",
@@ -484,5 +484,19 @@
     "mae": 0.1797,
     "mae_reference": 0.1772,
     "note": "day-ahead MAE on t2 when trained only on t1 (mae) vs trained on all turbines (mae_reference)"
+  },
+  "interval_calibration": {
+    "k": 1.06,
+    "target_coverage": 0.8,
+    "fitted_on_months": [
+      "2025-10",
+      "2025-11",
+      "2025-12"
+    ],
+    "check_month": "2026-01",
+    "coverage_fit_before": 0.716,
+    "coverage_fit_after": 0.807,
+    "coverage_check_before": 0.732,
+    "coverage_check_after": 0.807
   }
 }
