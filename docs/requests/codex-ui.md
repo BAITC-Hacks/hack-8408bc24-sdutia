@@ -10,6 +10,6 @@
 ## Verification environment — resolved
 
 - **What:** local `.venv` interpreter.
-- **Expected vs actual:** The project contract supports Python 3.11–3.13. The original environment ran Python 3.14.5. The isolated `hackaton-ui` checkout now has its own Python 3.12.14 environment, installed directly from the unchanged requirements file. All 36 offline UI tests pass there. UI modules also parse with Python 3.11 syntax rules.
+- **Expected vs actual:** The project contract supports Python 3.11–3.13. The original environment ran Python 3.14.5. The isolated `hackaton-ui` checkout now has its own Python 3.12.14 environment, installed directly from the unchanged requirements file. All 47 offline UI tests pass there. Real-output AppTest checks also pass in RU and EN with networking blocked and no LLM credentials: all five tabs, eight charts and seven tables, without exceptions or UI errors. UI modules also parse with Python 3.11 syntax rules.
 - **Reproduce:** `.venv\Scripts\python.exe --version`.
 - **Severity:** resolved; no dependency files changed by UI.
