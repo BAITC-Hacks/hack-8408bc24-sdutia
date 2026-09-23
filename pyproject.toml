@@ -17,6 +17,8 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# tests/, tests/ui/ and tests/qa/ are owned by different engineers and may reuse file names
+addopts = "--import-mode=importlib"
 markers = [
     "slow: long-running end-to-end tests",
     "network: tests that call external APIs (skipped when WINDAGENT_OFFLINE=1)",
