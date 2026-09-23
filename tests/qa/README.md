@@ -12,15 +12,11 @@ Every child sets `WINDAGENT_OFFLINE=1`, disables LLM providers and clears API ke
 
 Each test writes to its own temporary output directory. Single forecasts use `adhoc/`, and a preservation check verifies they do not overwrite a copied historical run. The configured data, model and site files come from this checkout. The tests do not regenerate committed results, train models, call `report`, or run a clean-clone/full-period verification. The short backtest intentionally covers only a small portion of the period. The evaluation input is synthetic with a known mathematical error and is not evidence of real forecast accuracy.
 
-## Known defects
+## Regression coverage and resolved findings
 
-Reproduced contract failures are tracked in [docs/requests/codex-qa.md](../../docs/requests/codex-qa.md). Tests for those defects use `xfail(strict=True)` with the corresponding defect ID. These are reported as expected failures, not passes. A fix that unexpectedly passes requires removing its marker, so a resolved defect cannot remain silently marked.
+The original contract failures and their resolution commits are tracked in [docs/requests/codex-qa.md](../../docs/requests/codex-qa.md). The core owner fixed the reported issues and removed the corresponding strict expected-failure markers. These cases now run as ordinary assertions, including offline network protection and comparison with regenerated artifacts.
 
-To see every known defect as an ordinary failing assertion:
-
-```powershell
-.\.venv\Scripts\python.exe -m pytest tests/qa -q --runxfail --basetemp=.venv/qa-strict-temp
-```
+No `xfail` or skip markers currently hide these checks. Historical reproduction commands containing `--runxfail` remain valid; the flag has no special effect after marker removal.
 
 The supplied `--basetemp` directories are disposable and pytest clears them on reuse. Use these dedicated paths rather than a directory containing personal files.
 

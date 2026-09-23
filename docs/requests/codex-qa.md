@@ -1,24 +1,24 @@
 # QA requests to the core engineer
 
-Tested on 2026-09-23 in the QA checkout, Python 3.12.14 with the pinned project requirements. Initial core baseline: `5d4b25c`; repeated affected checks after upstream `cdcbe11`. Core source files were not changed by QA.
+Tested on 2026-09-23 in the QA checkout, Python 3.12.14 with the pinned project requirements. Initial core baseline: `5d4b25c`; repeated checks after `cdcbe11` and the fixes in `6a515a9` / `16acaf7`. Core source files were not changed by QA.
 
 Every subprocess uses `WINDAGENT_OFFLINE=1`, `LLM_PROVIDER=none`, empty API keys and isolated output directories. A socket audit hook prevents external communication and records any attempted connection or DNS lookup. The guard-induced exception is not itself a product defect; the attempted network access is the evidence for the offline findings.
 
-The regression cases below are marked `xfail(strict=True)` until the core owner resolves them. Run with `--runxfail` to see the original failing expectations. All reproduction commands below assume the QA checkout and its installed `.venv`:
+The findings below preserve the original failures and the core owner's resolution commits. Previously expected failures are now ordinary regression tests; all `xfail` markers were removed after the fixes. Commands assume the QA checkout and its installed `.venv`:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest tests/qa -q -ra --basetemp=.venv/qa-test-temp
-.\.venv\Scripts\python.exe -m pytest tests/qa -q --runxfail --basetemp=.venv/qa-strict-temp
 ```
 
 The temporary directories are dedicated disposable test output. No real API endpoint needs to be contacted to reproduce these findings.
 
 ## Verification record
 
-- Latest combined suite on `cdcbe11`: **26 passed, 14 expected failures**, covering **7 unresolved categories**. The removed output-directory option is recorded separately as resolved by a contract correction.
+- Final verification after `6a515a9`, `16acaf7` and `a51d9ef`: **40 passed, no expected failures or skips**. All seven implementation/artifact findings are resolved; the output-directory option mismatch was resolved by the earlier contract correction. No blocked network attempts occurred in the passing offline checks.
+- Historical combined suite on `cdcbe11`: **26 passed, 14 expected failures**, covering **7 then-unresolved categories**. The removed output-directory option was resolved separately by a contract correction.
 - Initial combined suite before `cdcbe11`: **26 passed, 13 expected failures**. The original strict run reproduced these failures before markers were added.
-- Workflow coverage includes offline help/info, protected historical outputs with separate adhoc forecasts, disclosed LLM fallback, a short rolling backtest, a custom horizon and evaluation using synthetic actuals with a known error (including file paths with spaces). Replay comparison is retained as a separate expected failure after the upstream model changed without regenerating the saved runs.
-- Expected failures do not establish correctness of the affected commands. Their markers use `raises=AssertionError`; harness failures such as timeouts remain ordinary failures.
+- Workflow coverage includes offline help/info, protected historical outputs with separate adhoc forecasts, disclosed LLM fallback, a short rolling backtest, a custom horizon and evaluation using synthetic actuals with a known error (including file paths with spaces). Replay comparison now checks the regenerated artifacts as an ordinary assertion.
+- Historical expected failures did not establish correctness. They used `raises=AssertionError` so harness failures such as timeouts were not hidden. No expected-failure markers remain.
 - Not repeated: clean-clone verification, AI-judge review, full retraining or full-period validation. The restart handoff assigns those to the core engineer or says to skip them.
 
 ## CLI-ERROR-FORMAT — parser errors bypass the documented message format
@@ -77,7 +77,7 @@ The temporary directories are dedicated disposable test output. No real API endp
 - **Severity:** major.
 - **What:** the upstream model and validation metrics changed in `cdcbe11`; saved `runs/`, submission and README metrics did not change in that commit.
 - **Expected:** the committed model should reproduce the corresponding committed forecast, and the README results block should reflect the current metrics. This is the reproduction promise in the README.
-- **Actual:** the offline replay of the first issue differs from the saved forecast. Across all entities/versions, the maximum absolute difference is `0.0712` in `mean` (normalized power). The current metrics file has day-ahead MAE `0.1680`, while the README block still says `0.169`. Presentation documents use the current metrics and label saved run values as historical.
+- **Actual at `cdcbe11`:** the offline replay of the first issue differed from the saved forecast. Across all entities/versions, the maximum absolute difference was `0.0712` in `mean` (normalized power). The metrics file had day-ahead MAE `0.1680`, while the README block still said `0.169`. The presentation warnings for this mismatch were removed after the core owner regenerated the artifacts.
 - **Reproduce:** `.\.venv\Scripts\python.exe -m pytest tests/qa/test_cli_workflows.py -q --runxfail -k matches_committed_artifact --basetemp=.venv/qa-replay-temp`.
 - **Core owner resolution:** fixed in `6a515a9` (backtest, submission and README metrics regenerated with the current model); strict xfail marker removed in `16acaf7`.
 
