@@ -1,0 +1,61 @@
+{
+  "synthetic_fixture": true,
+  "site": "shelek",
+  "issue_id": "2026-02-01_0000",
+  "issue_time_utc": "2026-01-31T18:00:00Z",
+  "created_at_utc": "2026-02-01T00:00:02Z",
+  "policy": "rules",
+  "provider": "none",
+  "model": null,
+  "horizon_h": 48,
+  "versions": [
+    {
+      "version": 1,
+      "as_of_utc": "2026-01-31T18:00:00Z",
+      "reason": "initial"
+    },
+    {
+      "version": 2,
+      "as_of_utc": "2026-02-01T00:00:00Z",
+      "reason": "new synthetic weather runs"
+    }
+  ],
+  "models_used": [
+    "ecmwf_ifs025",
+    "ecmwf_aifs025_single",
+    "icon_seamless",
+    "gfs_seamless"
+  ],
+  "excluded_models": [],
+  "runs_used": {
+    "ecmwf_ifs025": [
+      "2026-01-31T06:00:00Z",
+      "2026-01-31T12:00:00Z"
+    ],
+    "ecmwf_aifs025_single": [
+      "2026-01-31T06:00:00Z",
+      "2026-01-31T12:00:00Z"
+    ],
+    "icon_seamless": [
+      "2026-01-31T06:00:00Z",
+      "2026-01-31T12:00:00Z"
+    ],
+    "gfs_seamless": [
+      "2026-01-31T06:00:00Z",
+      "2026-01-31T12:00:00Z"
+    ]
+  },
+  "weather_source": "cache",
+  "warnings": [
+    "SYNTHETIC FIXTURE / СИНТЕТИЧЕСКИЕ ДАННЫЕ: UI tests only; not forecast evidence."
+  ],
+  "kpis": {
+    "energy_norm_h": 20.315264,
+    "capacity_factor": 0.423235,
+    "max_ramp_3h": 0.153631,
+    "mean_band_width": 0.1911,
+    "revision_mae_v2_vs_v1": 0.013481
+  },
+  "actuals_available": false,
+  "errors": null
+}
