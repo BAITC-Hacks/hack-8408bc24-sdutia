@@ -10,7 +10,7 @@ From the repository root, with the dependencies in `requirements.txt` installed:
 
 Every child sets `WINDAGENT_OFFLINE=1`, disables LLM providers and clears API keys. A Python audit hook also blocks socket connection and DNS attempts, logging only event names in the test's temporary directory. This allows the suite to detect commands that ignore offline mode without contacting external services. This hook changes only the network boundary, not application calculations or data.
 
-Each test writes to its own temporary output directory. The configured data, model and site files come from this checkout. The tests do not regenerate committed results, train models, call `report`, or run a clean-clone/full-period verification. The short backtest intentionally covers only a small portion of the period. The evaluation input is synthetic with a known mathematical error and is not evidence of real forecast accuracy.
+Each test writes to its own temporary output directory. Single forecasts use `adhoc/`, and a preservation check verifies they do not overwrite a copied historical run. The configured data, model and site files come from this checkout. The tests do not regenerate committed results, train models, call `report`, or run a clean-clone/full-period verification. The short backtest intentionally covers only a small portion of the period. The evaluation input is synthetic with a known mathematical error and is not evidence of real forecast accuracy.
 
 ## Known defects
 

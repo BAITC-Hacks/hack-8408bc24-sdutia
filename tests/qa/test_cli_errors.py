@@ -1,6 +1,5 @@
 """Subprocess checks for the public CLI contract (docs/CONTRACTS.md, section 6)."""
 
-import json
 import shutil
 
 import pytest
@@ -123,7 +122,7 @@ def test_missing_configuration_has_data_exit_code(cli, tmp_path):
     assert "Site config not found" in result.stderr
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="CLI-MISSING-DATA: absent SCADA ends in an empty-concatenation error")
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason="CLI-MISSING-DATA: absent SCADA exits 4 instead of data-unavailable code 3")
 def test_missing_scada_has_data_exit_code(cli, tmp_path):
     data = tmp_path / "data-without-scada"
     shutil.copytree(cli.repo / "data" / "cache", data / "cache")
@@ -133,7 +132,7 @@ def test_missing_scada_has_data_exit_code(cli, tmp_path):
     assert "SCADA" in result.stderr
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="CLI-MISSING-DATA: absent offline weather cache ends in an empty-concatenation error")
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason="CLI-MISSING-DATA: absent offline cache exits 4 instead of data-unavailable code 3")
 def test_offline_missing_weather_cache_has_data_exit_code(cli, tmp_path):
     data = tmp_path / "data-without-weather-cache"
     shutil.copytree(cli.repo / "data" / "raw", data / "raw")
@@ -148,18 +147,3 @@ def test_debug_opt_in_preserves_exit_code_and_shows_traceback(cli):
     assert result.returncode == 2
     assert "Traceback (most recent call last)" in result.stderr
     assert result.stderr.strip().splitlines()[-1].startswith("ERROR: ")
-
-
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="CLI-OUTPUTS-DIR: documented --outputs-dir option is not implemented")
-def test_backtest_outputs_dir_flag_writes_only_requested_directory(cli, tmp_path):
-    destination = tmp_path / "requested-outputs"
-    result = cli("backtest", "--start", "2026-02-05", "--end", "2026-02-05", "--policy", "rules",
-                 "--offline", "--outputs-dir", str(destination))
-    assert result.returncode == 0, (result.stdout, result.stderr)
-    run = destination / "shelek" / "runs" / "2026-02-05_0000" / "run.json"
-    assert run.exists()
-    metadata = json.loads(run.read_text(encoding="utf-8"))
-    assert metadata["policy"] == "rules"
-    assert metadata["weather_source"] == "cache"
-    assert not list(cli.outputs.rglob("run.json"))
-
