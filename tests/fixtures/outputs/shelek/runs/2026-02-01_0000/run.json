@@ -50,11 +50,11 @@
     "SYNTHETIC FIXTURE / СИНТЕТИЧЕСКИЕ ДАННЫЕ: UI tests only; not forecast evidence."
   ],
   "kpis": {
-    "energy_norm_h": 20.315264,
-    "capacity_factor": 0.423235,
+    "energy_norm_h": 17.004168,
+    "capacity_factor": 0.404861,
     "max_ramp_3h": 0.153631,
-    "mean_band_width": 0.1911,
-    "revision_mae_v2_vs_v1": 0.013481
+    "mean_band_width": 0.1989,
+    "revision_mae_v2_vs_v1": 0.014702
   },
   "actuals_available": false,
   "errors": null

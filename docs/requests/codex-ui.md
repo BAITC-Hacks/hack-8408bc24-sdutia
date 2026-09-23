@@ -2,10 +2,10 @@
 
 ## Issue metadata is not version-specific
 
-- **What:** `windagent.api.load_run`, schema R `kpis`, `models_used`, `weather_source`; schema W version association.
-- **Expected vs actual:** Selecting v1 or v2 changes the plotted forecast correctly, but the frozen interface provides issue-level KPIs and provenance only. Weather rows can include several initialization times without a forecast-version key. The UI labels KPIs as issue metadata and draws weather runs separately; it does not invent selected-version figures.
+- **What:** `windagent.api.load_run`, schema R `kpis`, `models_used`, `weather_source`.
+- **Expected vs actual:** Selecting v1 or v2 changes the plotted forecast correctly, but the interface provides issue-level KPIs and provenance only. The UI labels KPIs as issue metadata; it does not invent selected-version figures. Schema W version association was added in core commit `a55fec6`; the UI now filters weather by the selected version and displays schema F `version_as_of_utc` with the remaining forecast-hour count.
 - **Reproduce:** `WINDAGENT_OUTPUTS_DIR=tests/fixtures/outputs streamlit run app/streamlit_app.py`; switch between v1 and v2. On PowerShell set the environment variable separately.
-- **Severity:** minor; the current contract is supported. A future optional `kpis` and weather-run references inside each `versions[]` entry would permit exact version-specific cards and provenance.
+- **Severity:** minor; the current contract is supported. A future optional `kpis` and provenance inside each `versions[]` entry would permit exact version-specific cards.
 
 ## Verification environment — resolved
 

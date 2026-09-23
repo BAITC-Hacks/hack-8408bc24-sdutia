@@ -90,6 +90,12 @@ def render_kpis(meta: dict, lang: str) -> None:
         column.metric(tr(key, lang), number((meta.get("kpis") or {}).get(key)))
     st.caption(tr("kpi_scope", lang))
 
+def select_weather_for_version(weather: pd.DataFrame, version: int) -> pd.DataFrame:
+    """Honor explicit version association; older files remain readable."""
+    if "version" not in weather:
+        return weather.copy()
+    return weather.loc[pd.to_numeric(weather["version"], errors="coerce").eq(version)].copy()
+
 def render_weather(weather: pd.DataFrame, lang: str, offset: int, clock_label: str, key: str) -> None:
     st.subheader(tr("weather", lang))
     st.caption(tr("weather_note", lang))
@@ -128,6 +134,12 @@ def render_forecast(run: dict, site: str, version: int, lang: str, offset: int, 
         st.info(tr("incomplete", lang))
         return
     render_kpis(meta, lang)
+    if "version_as_of_utc" in selected:
+        asofs = pd.to_datetime(selected["version_as_of_utc"], utc=True, errors="coerce").dropna().unique()
+        if len(asofs) == 1:
+            st.caption(tr("version_scope", lang, version=version,
+                time=display_times(pd.Series(asofs), offset).iloc[0], clock=clock_label,
+                hours=selected.loc[selected["entity"].eq("farm"), "target_time_utc"].nunique()))
     with st.container(border=True):
         actuals = call_api("load_actuals", site, pd.to_datetime(selected["target_time_utc"], utc=True).min(),
             pd.to_datetime(selected["target_time_utc"], utc=True).max(), lang=lang, default=pd.DataFrame(), quiet=True)
@@ -135,7 +147,10 @@ def render_forecast(run: dict, site: str, version: int, lang: str, offset: int, 
         if actuals.empty or "available" not in actuals or not actuals["available"].eq(True).any():
             st.caption(tr("no_actuals", lang))
     with st.container(border=True):
-        render_weather(run.get("weather", pd.DataFrame()), lang, offset, clock_label, "weather_chart")
+        weather = run.get("weather", pd.DataFrame())
+        if "version" not in weather and not weather.empty:
+            st.caption(tr("weather_legacy", lang))
+        render_weather(select_weather_for_version(weather, version), lang, offset, clock_label, "weather_chart")
     with st.expander(tr("hourly_table", lang)):
         st.dataframe(selected, width="stretch", hide_index=True,
             column_config={c: st.column_config.NumberColumn(format="%.3f") for c in ("mean", "p10", "p50", "p90", "mw_mean") if c in selected})

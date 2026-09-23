@@ -26,13 +26,15 @@ MODELS = (
     "gfs_seamless",
 )
 ENTITIES = ("farm", "t1", "t2")
+HORIZON_H = 48
+UPDATE_AFTER_H = 6
 F_COLUMNS = (
-    "site", "issue_id", "version", "issue_time_utc", "target_time_utc",
+    "site", "issue_id", "version", "issue_time_utc", "version_as_of_utc", "target_time_utc",
     "target_time_data_clock", "target_time_kz_official", "lead_h", "product",
     "entity", "mean", "p10", "p50", "p90", "mw_mean",
 )
 W_COLUMNS = (
-    "issue_id", "target_time_utc", "model", "init_time_utc", "offset_days",
+    "issue_id", "version", "target_time_utc", "model", "init_time_utc", "offset_days",
     "ws10", "ws100", "wd100", "t2m", "sp", "source",
 )
 S_COLUMNS = (
@@ -78,7 +80,9 @@ def write_json(path: Path, content: dict) -> None:
 def forecast_rows(issue: datetime, phase: float, versions: tuple[int, ...] = (1, 2)) -> list[dict]:
     rows = []
     for version in versions:
-        for lead in range(48):
+        first_lead = 0 if version == 1 else UPDATE_AFTER_H
+        version_as_of = issue + timedelta(hours=first_lead)
+        for lead in range(first_lead, HORIZON_H):
             target = issue + timedelta(hours=lead)
             base = 0.44 + 0.22 * math.sin((lead + phase) / 7) + 0.07 * math.cos(lead / 3)
             revision = (version - 1) * (0.022 * math.sin(lead / 6) - 0.008)
@@ -92,7 +96,8 @@ def forecast_rows(issue: datetime, phase: float, versions: tuple[int, ...] = (1,
                 width = 0.065 + lead * 0.0013 + (0.01 if entity != "farm" else 0)
                 rows.append({
                     "site": "shelek", "issue_id": issue_id(issue), "version": version,
-                    "issue_time_utc": iso(issue), "target_time_utc": iso(target),
+                    "issue_time_utc": iso(issue), "version_as_of_utc": iso(version_as_of),
+                    "target_time_utc": iso(target),
                     "target_time_data_clock": target.astimezone(DATA_CLOCK).strftime("%Y-%m-%d %H:%M"),
                     "target_time_kz_official": target.astimezone(KZ_CLOCK).strftime("%Y-%m-%d %H:%M"),
                     "lead_h": lead, "product": "intraday" if lead < 24 else "day_ahead",
@@ -105,15 +110,17 @@ def forecast_rows(issue: datetime, phase: float, versions: tuple[int, ...] = (1,
 def weather_rows(issue: datetime, phase: float) -> list[dict]:
     rows = []
     # V1 uses 06 UTC runs, v2 uses 12 UTC runs, all available before their as-of.
-    # W has no version column; init_time_utc identifies the weather run.
+    # Each target hour H consumes weather at H and H+1, including the final endpoint.
     for version in (1, 2):
         init = issue - timedelta(hours=12 if version == 1 else 6)
+        first_lead = 0 if version == 1 else UPDATE_AFTER_H
         for model_index, model in enumerate(MODELS):
-            for lead in range(48):
+            for lead in range(first_lead, HORIZON_H + 1):
                 target = issue + timedelta(hours=lead)
                 ws100 = 7.2 + 2.3 * math.sin((lead + phase) / 7) + 0.18 * model_index + 0.13 * (version - 1)
                 rows.append({
-                    "issue_id": issue_id(issue), "target_time_utc": iso(target),
+                    "issue_id": issue_id(issue), "version": version,
+                    "target_time_utc": iso(target),
                     "model": model, "init_time_utc": iso(init),
                     "offset_days": (target.date() - init.date()).days,
                     "ws10": round(ws100 * 0.73, 4), "ws100": round(ws100, 4),
@@ -130,14 +137,14 @@ def trace_events(issue: datetime) -> list[dict]:
         ("run_start", None, "Synthetic fixture run started", 0),
         ("plan", None, "Check archived weather, forecast and publish", 1),
         ("tool_call", "fetch_weather", "Read synthetic cached weather inputs", 2),
-        ("tool_result", "fetch_weather", "4 models, 48 hours, no missing values", 3),
+        ("tool_result", "fetch_weather", "4 models, 49 weather instants supporting 48 forecast hours", 3),
         ("decision", "validate_weather", "Synthetic weather runs satisfy the as-of guard", 4),
         ("warning", None, "Synthetic test data: not a real forecast or evaluation", 5),
         ("tool_call", "predict", "Calculate synthetic forecast intervals", 6),
         ("tool_result", "predict", "48 hours for farm, t1 and t2", 7),
         ("publish", "publish", "Published synthetic version 1", 8),
         ("decision", "check_new_runs", "New synthetic weather run available; recompute", 21600),
-        ("publish", "publish", "Published synthetic version 2", 21601),
+        ("publish", "publish", "Published synthetic version 2 for the 42 remaining hours", 21601),
         ("run_end", None, "Synthetic fixture run complete", 21602),
     ]
     events = []
@@ -155,7 +162,7 @@ def trace_events(issue: datetime) -> list[dict]:
 
 
 def run_meta(issue: datetime, rows: list[dict]) -> dict:
-    farm_v1 = [r for r in rows if r["entity"] == "farm" and r["version"] == 1]
+    farm_v1 = {r["target_time_utc"]: r for r in rows if r["entity"] == "farm" and r["version"] == 1}
     farm_v2 = [r for r in rows if r["entity"] == "farm" and r["version"] == 2]
     points = [r["mean"] for r in farm_v2]
     return {
@@ -175,7 +182,7 @@ def run_meta(issue: datetime, rows: list[dict]) -> dict:
             "energy_norm_h": round(sum(points), 6), "capacity_factor": round(mean(points), 6),
             "max_ramp_3h": round(max(abs(points[i] - points[i - 3]) for i in range(3, len(points))), 6),
             "mean_band_width": round(mean(r["p90"] - r["p10"] for r in farm_v2), 6),
-            "revision_mae_v2_vs_v1": round(mean(abs(a["mean"] - b["mean"]) for a, b in zip(farm_v2, farm_v1)), 6),
+            "revision_mae_v2_vs_v1": round(mean(abs(row["mean"] - farm_v1[row["target_time_utc"]]["mean"]) for row in farm_v2), 6),
         },
         "actuals_available": False, "errors": None,
     }
@@ -269,12 +276,31 @@ def validate_forecasts(rows: list[dict], *, actuals: bool = False) -> None:
         assert row["mw_mean"] == ""
         target = datetime.fromisoformat(row["target_time_utc"].replace("Z", "+00:00"))
         issued = datetime.fromisoformat(row["issue_time_utc"].replace("Z", "+00:00"))
+        as_of = datetime.fromisoformat(row["version_as_of_utc"].replace("Z", "+00:00"))
+        assert row["version"] in (1, 2)
+        assert as_of == issued + timedelta(hours=0 if row["version"] == 1 else UPDATE_AFTER_H)
+        assert as_of <= target < issued + timedelta(hours=HORIZON_H)
         assert target - issued == timedelta(hours=row["lead_h"])
         assert row["target_time_data_clock"] == target.astimezone(DATA_CLOCK).strftime("%Y-%m-%d %H:%M")
         assert row["target_time_kz_official"] == target.astimezone(KZ_CLOCK).strftime("%Y-%m-%d %H:%M")
         assert row["product"] == ("intraday" if row["lead_h"] < 24 else "day_ahead")
         if actuals:
             assert 0 <= row["actual"] <= 1
+
+
+def validate_weather(rows: list[dict], issue: datetime) -> None:
+    seen = set()
+    for row in rows:
+        assert set(row) == set(W_COLUMNS)
+        key = (row["version"], row["model"], row["target_time_utc"])
+        assert key not in seen
+        seen.add(key)
+    for version in (1, 2):
+        first_lead = 0 if version == 1 else UPDATE_AFTER_H
+        expected_times = {iso(issue + timedelta(hours=lead)) for lead in range(first_lead, HORIZON_H + 1)}
+        for model in MODELS:
+            actual_times = {r["target_time_utc"] for r in rows if r["version"] == version and r["model"] == model}
+            assert actual_times == expected_times
 
 
 def generate() -> None:
@@ -287,9 +313,9 @@ def generate() -> None:
         weather = weather_rows(issue, phase)
         events = trace_events(issue)
         validate_forecasts(forecasts)
-        assert len(forecasts) == 2 * 48 * len(ENTITIES)
-        assert len(weather) == 2 * 48 * len(MODELS)
-        assert all(set(row) == set(W_COLUMNS) for row in weather)
+        validate_weather(weather, issue)
+        assert len(forecasts) == (2 * HORIZON_H - UPDATE_AFTER_H) * len(ENTITIES)
+        assert len(weather) == (2 * (HORIZON_H + 1) - UPDATE_AFTER_H) * len(MODELS)
         assert all(set(event) == T_KEYS for event in events)
         write_csv(run / "forecast.csv", F_COLUMNS, forecasts)
         write_csv(run / "weather.csv", W_COLUMNS, weather)
@@ -300,9 +326,10 @@ def generate() -> None:
             "### Synthetic fixture / Синтетический пример\n\n"
             "These deterministic values exercise the UI. They do not represent measured weather, "
             "real model forecasts, validation skill, or a completed agent run.\n\n"
-            "- Two synthetic revisions cover 48 hours for farm, t1 and t2.\n"
-            "- Four synthetic weather series are labelled as cached inputs.\n"
-            "- Version 2 illustrates a revision after a later weather run becomes available.\n"
+            "- Version 1 covers all 48 hours for farm, t1 and t2.\n"
+            "- Version 2 is issued six hours later and covers only the 42 remaining hours.\n"
+            "- Version as-of timestamps are explicit; lead hours remain relative to the original issue.\n"
+            "- Four synthetic weather models have versioned cached inputs at H and H+1.\n"
             "- Normalized power has no MW conversion because rated capacity is unset.\n",
             encoding="utf-8", newline="\n",
         )
