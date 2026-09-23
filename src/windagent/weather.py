@@ -171,7 +171,8 @@ def window_for_issue(site: config.Site, issue_time_utc: pd.Timestamp, horizon_h:
     out = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
     if out.empty:
         where = "the weather cache (offline mode)" if offline else "the API or the weather cache"
-        raise ExternalServiceError(
+        err = DataUnavailableError if offline else ExternalServiceError   # offline: data missing (3); online: service (4)
+        raise err(
             f"No archived weather forecasts for {t0:%Y-%m-%d %H:%M} UTC in {where}. The committed cache covers "
             f"2024-02 … 2026-03-03; for later dates run online.",
             f"Нет архивных прогнозов погоды на {t0:%Y-%m-%d %H:%M} UTC ({'кэш, офлайн-режим' if offline else 'API или кэш'}). "

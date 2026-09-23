@@ -77,9 +77,15 @@ def _cmd_forecast(args) -> int:
     from .agent import runner
 
     _apply_offline(args)
+    from . import config
+    from .errors import InputError
+
     printer = (lambda e: print(f"[{e['seq']:02d}] {e['type']:<11} {e.get('tool') or '':<18} {e['summary']}")) if args.verbose else None
+    if args.now and args.issue:
+        raise InputError("Use either --issue or --now, not both.", "Укажите либо --issue, либо --now, но не оба.")
     if args.now:
-        r = runner.run_now(args.site, policy=args.policy, on_event=printer, horizon_h=args.horizon)
+        r = runner.run_now(args.site, policy=args.policy, on_event=printer, horizon_h=args.horizon,
+                           offline=True if args.offline else None)
     else:
         if not args.issue:
             from .errors import InputError
@@ -90,7 +96,7 @@ def _cmd_forecast(args) -> int:
     m = r["meta"]
     print(f"issue {m['issue_id']} | policy {m['policy']}/{m['provider']} | versions {len(m['versions'])} | "
           f"models {m['models_used']} | KPIs {m['kpis']}")
-    print(f"written to outputs/{args.site}/{'live' if args.now else 'adhoc'}/{m['issue_id']}/")
+    print(f"written to {config.outputs_dir() / args.site / ('live' if args.now else 'adhoc') / m['issue_id']}")
     print(r["analysis"])
     return 0
 
@@ -224,10 +230,18 @@ def _cmd_compare(args) -> int:
     return 0 if ok else 1
 
 
+class _Parser(argparse.ArgumentParser):
+    """argparse, but usage errors follow the CLI contract (one ERROR line, exit code 2)."""
+
+    def error(self, message):
+        from .errors import InputError
+        raise InputError(f"{message} (see python -m windagent --help)", f"{message} (см. python -m windagent --help)")
+
+
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="windagent", description="Agentic AI wind-farm forecasting")
+    p = _Parser(prog="windagent", description="Agentic AI wind-farm forecasting")
     p.add_argument("--debug", action="store_true", help="show tracebacks on errors")
-    sub = p.add_subparsers(dest="command", required=True)
+    sub = p.add_subparsers(dest="command", required=True, parser_class=_Parser)
 
     def add(name, help_text, handler):
         sp = sub.add_parser(name, help=help_text)
@@ -277,7 +291,11 @@ def main(argv: list[str] | None = None) -> int:
         except (AttributeError, ValueError):
             pass
     parser = build_parser()
-    args = parser.parse_args(argv)
+    try:
+        args = parser.parse_args(argv)
+    except WindAgentError as exc:
+        print(f"ERROR: {exc.user_message_en}", file=sys.stderr)
+        return exc.exit_code
     try:
         return int(args.handler(args) or 0)
     except WindAgentError as exc:

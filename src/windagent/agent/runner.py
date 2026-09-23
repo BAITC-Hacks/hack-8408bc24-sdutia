@@ -172,10 +172,11 @@ def run_issue(site: str, issue_time_data_clock: str, policy: str = "auto", on_ev
         used.initial(state, tracer)
     if not state.versions:                       # still nothing: report the first tool error cleanly
         from ..errors import ExternalServiceError
-        errs = [e["summary"] for e in tracer.events if e["type"] == "tool_result" and not e["ok"]]
-        reason = errs[0] if errs else "unknown reason"
-        raise ExternalServiceError(f"No forecast could be produced for {state.dc(T)}: {reason}",
-                                   f"Не удалось построить прогноз на {state.dc(T)}: {reason}")
+        first = state.errors[0] if state.errors else None
+        reason = first.user_message_en if first else "unknown reason"
+        cls = type(first) if first else ExternalServiceError
+        raise cls(f"No forecast could be produced for {state.dc(T)}: {reason}",
+                  f"Не удалось построить прогноз на {state.dc(T)}: {first.user_message_ru if first else reason}")
     if update_after_h:
         as_of = T + pd.Timedelta(hours=update_after_h)
         if as_of <= now_utc() and as_of < state.window_end_utc:
@@ -191,17 +192,24 @@ def run_issue(site: str, issue_time_data_clock: str, policy: str = "auto", on_ev
 
 
 def run_now(site: str, policy: str = "auto", on_event: Callable[[dict], None] | None = None,
-            horizon_h: int = config.HORIZON_H) -> dict:
+            horizon_h: int = config.HORIZON_H, offline: bool | None = None) -> dict:
     s = config.get_site(site)
     T = now_utc().floor("h")
     return run_issue(site, clock_str(T, s.data_clock_utc_offset_h), policy=policy, on_event=on_event,
-                     horizon_h=horizon_h, offline=False, kind="live", update_after_h=None)
+                     horizon_h=horizon_h, offline=offline, kind="live", update_after_h=None)
 
 
 def backtest(site: str = "shelek", start: str = "2026-01-31", end: str = "2026-02-28", policy: str = "rules",
              offline: bool | None = None, log=print) -> dict:
     s = config.get_site(site)
-    days = pd.date_range(start, end, freq="1D")
+    try:
+        lo, hi = pd.Timestamp(str(start)), pd.Timestamp(str(end))
+    except (ValueError, TypeError) as exc:
+        raise InputError(f"Invalid backtest dates '{start}' / '{end}': expected YYYY-MM-DD.",
+                         f"Неверные даты бэктеста '{start}' / '{end}': ожидается ГГГГ-ММ-ДД.") from exc
+    if lo > hi:
+        raise InputError("--start must not be after --end.", "--start не может быть позже --end.")
+    days = pd.date_range(lo.normalize(), hi.normalize(), freq="1D")
     for d in days:
         issue = f"{d:%Y-%m-%d} {config.ISSUE_HOUR_DATA_CLOCK:02d}:00"
         r = run_issue(site, issue, policy=policy, offline=offline)

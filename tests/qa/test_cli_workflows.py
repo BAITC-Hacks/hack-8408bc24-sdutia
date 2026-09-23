@@ -61,7 +61,6 @@ def test_forecast_writes_adhoc_output_and_tracks_provenance(cli):
     assert not cli.network_log.exists()
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="ARTIFACT-REPLAY-DRIFT: current model differs from saved run snapshot")
 def test_offline_forecast_matches_committed_artifact(cli):
     result = cli("forecast", "--issue", "2026-01-31 00:00", "--policy", "rules", "--offline")
     assert_success(result)
@@ -71,7 +70,6 @@ def test_offline_forecast_matches_committed_artifact(cli):
     pd.testing.assert_frame_equal(forecast[columns], reference[columns], atol=2e-4, rtol=0)
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="CLI-OUTPUT-LOCATION: printed destination ignores output-root override")
 def test_forecast_prints_the_effective_output_directory(cli):
     result = cli("forecast", "--issue", "2026-02-05 00:00", "--policy", "rules")
     assert_success(result)

@@ -38,6 +38,7 @@ class RunState:
     versions: list = field(default_factory=list)
     analysis: dict = field(default_factory=dict)
     warnings: list = field(default_factory=list)
+    errors: list = field(default_factory=list)          # WindAgentError instances raised inside tools (exit codes)
     pending_reason: str = "initial"
 
     def __post_init__(self):
@@ -369,6 +370,7 @@ def call_tool(state: RunState, name: str, args: dict | None, tracer) -> dict:
         try:
             res = TOOLS[name](state, **args)
         except WindAgentError as exc:
+            state.errors.append(exc)
             res = _err(exc.user_message_en)
         except AssertionError as exc:          # as-of guard violation: never continue silently
             res = _err(f"as-of guard: {exc}")

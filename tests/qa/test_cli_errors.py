@@ -49,7 +49,6 @@ def test_forecast_horizon_out_of_range(cli, horizon):
     assert "Horizon" in result.stderr
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="CLI-ERROR-FORMAT: argparse bypasses the one-line ERROR contract")
 @pytest.mark.parametrize(
     "args",
     [
@@ -65,7 +64,6 @@ def test_parser_input_errors_use_documented_stderr_format(cli, args):
     assert_cli_error(cli(*args), 2)
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="CLI-BACKTEST-DATE: malformed dates exit 1 instead of input-error code 2")
 @pytest.mark.parametrize(
     "start,end",
     [("not-a-date", "2026-02-05"), ("2026-02-05", "not-a-date"), ("2026-02-30", "2026-02-30")],
@@ -82,7 +80,6 @@ def test_backtest_reversed_range_is_rejected(cli):
     assert not list(cli.outputs.rglob("submission_day_ahead.csv"))
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="CLI-ISSUE-NOW: --now silently takes precedence over --issue")
 def test_forecast_issue_and_now_are_mutually_exclusive(cli):
     # The socket audit guard is a backstop if --now accidentally wins over --issue.
     result = cli("forecast", "--issue", "2026-02-05 00:00", "--now", "--offline", "--policy", "rules")
@@ -92,7 +89,6 @@ def test_forecast_issue_and_now_are_mutually_exclusive(cli):
     assert not list(cli.outputs.rglob("run.json"))
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="CLI-OFFLINE-NOW: the live runner attempts network despite offline mode")
 def test_forecast_now_offline_never_attempts_network(cli):
     # Real live command, guarded only at the OS socket boundary by the fixture.
     result = cli("forecast", "--now", "--offline", "--policy", "rules")
@@ -122,7 +118,6 @@ def test_missing_configuration_has_data_exit_code(cli, tmp_path):
     assert "Site config not found" in result.stderr
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="CLI-MISSING-DATA: absent SCADA exits 4 instead of data-unavailable code 3")
 def test_missing_scada_has_data_exit_code(cli, tmp_path):
     data = tmp_path / "data-without-scada"
     shutil.copytree(cli.repo / "data" / "cache", data / "cache")
@@ -132,7 +127,6 @@ def test_missing_scada_has_data_exit_code(cli, tmp_path):
     assert "SCADA" in result.stderr
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="CLI-MISSING-DATA: absent offline cache exits 4 instead of data-unavailable code 3")
 def test_offline_missing_weather_cache_has_data_exit_code(cli, tmp_path):
     data = tmp_path / "data-without-weather-cache"
     shutil.copytree(cli.repo / "data" / "raw", data / "raw")
