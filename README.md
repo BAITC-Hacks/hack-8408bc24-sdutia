@@ -66,6 +66,7 @@ _Блок сгенерирован командой `python -m windagent report`
 | **Walk-forward валидация** против трёх бейзлайнов + перенос на «новую» турбину | [`src/windagent/validation.py`](src/windagent/validation.py) | `outputs/shelek/validation/` |
 | **Оценка по факту** (формат CSV организаторов) с детекцией сдвига часов | [`src/windagent/evaluate.py`](src/windagent/evaluate.py) | [`tests/test_evaluate_and_clock.py`](tests/test_evaluate_and_clock.py) |
 | **Криминалистика часов SCADA** (данные в фиксированном UTC+6) | [`src/windagent/clock.py`](src/windagent/clock.py) | `outputs/shelek/clock/clock_report.json` |
+| **Анализ данных SCADA:** полнота и пропуски, распределение и сезонность, ветер и мощность, флаг доступности, связь между турбинами | [`scripts/eda.py`](scripts/eda.py) | [`docs/DATA_ANALYSIS.md`](docs/DATA_ANALYSIS.md), `docs/figures/eda/` |
 | **Режим реального времени:** прогноз на ближайшие 48 ч от текущего момента | `run_now` в [`agent/runner.py`](src/windagent/agent/runner.py) | `python -m windagent forecast --now` |
 | **Дашборд** Streamlit: 5 вкладок, RU/EN, запуск агента с живой трассировкой | [`app/`](app/) | [`tests/ui/`](tests/ui/) |
 | **Надёжность.** Проверка входных данных, коды выхода, понятные сообщения об ошибках | [`errors.py`](src/windagent/errors.py), [`cli.py`](src/windagent/cli.py) | [`tests/test_agent.py`](tests/test_agent.py), [`tests/test_timeutil.py`](tests/test_timeutil.py) |
@@ -243,7 +244,7 @@ streamlit run app/streamlit_app.py
 
 Примерно 5–10 минут. Все шаги работают офлайн и без ключа LLM.
 
-0. **Всё одной командой** (около 1 минуты):
+0. **Всё одной командой** (около 3 минут):
 
    ```bash
    python -m windagent verify
@@ -274,7 +275,7 @@ streamlit run app/streamlit_app.py
    Ожидается 30 шагов:
    - проверка SCADA → прогоны → загрузка → проверка → прогноз → анализ → публикация v1;
    - через 6 ч: «newer runs change the inputs of … 28% … of the remaining hours» → пересчёт → v2;
-   - в конце аналитика и «Пост-проверка» по факту 31.01 (MAE 0.186 за 24 ч).
+   - в конце аналитика и «Пост-проверка» по факту 31.01 (MAE 0.1855 за 24 ч).
 
    Результат пишется в `outputs/shelek/adhoc/`; закоммиченные выпуски тестового периода не перезаписываются.
 
@@ -415,10 +416,14 @@ outputs/shelek/runs/          29 выпусков: forecast.csv, weather.csv, tr
 outputs/shelek/test_period/   submission_day_ahead.csv (672 ч), all_issues.csv
 outputs/shelek/validation/    metrics.json, predictions.csv
 outputs/shelek/clock/         clock_report.json
+outputs/provenance/           измеренные задержки публикации и проверка сдвигов архива
 src/windagent/                ядро (см. раздел 6)
 app/                          дашборд Streamlit
-tests/                        тесты ядра и UI
+scripts/eda.py                генератор отчёта docs/DATA_ANALYSIS.md
+tests/                        тесты ядра (tests/*.py), UI (tests/ui) и чёрного ящика CLI (tests/qa)
 docs/CONTRACTS.md             схемы файлов, API и CLI
+docs/DATA_ANALYSIS.md         анализ данных SCADA с рисунками (docs/figures/eda/)
+docs/presentation/            сценарий демо и ответы на вопросы жюри
 ```
 
 ## Приложение B. Команда
