@@ -33,6 +33,19 @@ WEATHER_MODELS: list[dict] = [
 ]
 
 
+SHORT_NAMES = {"ecmwf_aifs025_single": "ECMWF AIFS", "ecmwf_ifs025": "ECMWF IFS", "icon_seamless": "ICON", "gfs_seamless": "GFS"}
+
+
+def model_name(model_id: str) -> str:
+    return SHORT_NAMES.get(model_id, model_id)
+
+
+def humanize_models(text: str) -> str:
+    for mid, name in SHORT_NAMES.items():
+        text = text.replace(mid, name)
+    return text
+
+
 def data_dir() -> Path:
     return Path(os.environ.get("WINDAGENT_DATA_DIR", REPO_ROOT / "data"))
 

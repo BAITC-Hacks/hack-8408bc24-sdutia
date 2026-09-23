@@ -71,12 +71,25 @@ def _posthoc_errors(state: RunState) -> dict | None:
             "rmse": round(float(np.sqrt((e ** 2).mean())), 4), "note": "post-hoc verification; not available to the agent"}
 
 
+def _reason_ru(reason: str) -> str:
+    from ..config import humanize_models
+    if reason == "initial":
+        return "первичный прогноз"
+    r = humanize_models(reason).replace("newer runs for ", "вышли новые прогоны погоды: ")
+    return r.replace(" of hours, run ", " часов, прогон ").replace("recomputed", "пересчитан")
+
+
 def _analysis_md(state: RunState, errors: dict | None) -> str:
-    lines = [f"# Прогноз {state.issue_id} · {state.site.name}",
+    lines = [f"### Прогноз от {state.dc(state.issue_time_utc)} · {state.site.name}",
              f"Время выпуска: {state.dc(state.issue_time_utc)} (время данных, UTC+{state.site.data_clock_utc_offset_h}) · "
              f"горизонт {state.horizon_h} ч", ""]
     for v in state.versions:
-        lines.append(f"## Версия {v['version']} (as-of {state.dc(v['as_of_utc'])}, причина: {v['reason']})")
+        if v["version"] == 1:
+            lines.append(f"#### Версия 1 — первичный прогноз ({state.dc(v['as_of_utc'])})")
+        else:
+            lines.append(f"#### Версия {v['version']} — уточнение ({state.dc(v['as_of_utc'])})")
+            lines.append(f"Почему: {_reason_ru(v['reason'])}")
+            lines.append("")
         lines.append(v.get("summary_text") or "—")
         a = v.get("analysis") or {}
         if a:
@@ -86,9 +99,9 @@ def _analysis_md(state: RunState, errors: dict | None) -> str:
                          f"уверенность: {a.get('confidence')}; моделей: {a.get('n_models')}")
         lines.append("")
     if state.warnings:
-        lines += ["## Предупреждения", *[f"- {w}" for w in state.warnings], ""]
+        lines += ["#### Предупреждения", *[f"- {w}" for w in state.warnings], ""]
     if errors:
-        lines += ["## Пост-проверка (только бэктест)",
+        lines += ["#### Пост-проверка по факту (после публикации)",
                   f"По {errors['hours']} ч с фактом: MAE {errors['mae']}, RMSE {errors['rmse']}. "
                   "Эти данные не были доступны агенту в момент выпуска.", ""]
     return "\n".join(lines)

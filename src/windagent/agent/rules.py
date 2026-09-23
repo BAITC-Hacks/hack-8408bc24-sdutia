@@ -14,7 +14,8 @@ def summary_ru(state: RunState) -> str:
     a = state.analysis or {}
     cur = state.current or {}
     info = cur.get("info", {})
-    models = ", ".join(info.get("models_used", [])) or "н/д"
+    from ..config import model_name
+    models = ", ".join(model_name(m) for m in info.get("models_used", [])) or "н/д"
     parts = [
         f"Ожидаемый средний коэффициент использования мощности (КИУМ) ВЭС: {_fmt_share(a.get('capacity_factor'))} "
         f"(климатическая норма для этих часов: {_fmt_share(a.get('climatology_capacity_factor'))}).",
@@ -25,13 +26,14 @@ def summary_ru(state: RunState) -> str:
         f"Использованы модели погоды: {models}.",
     ]
     if state.excluded:
-        parts.append("Исключены: " + "; ".join(f"{m} ({r})" for m, r in state.excluded.items()) + ".")
+        parts.append("Исключены: " + "; ".join(f"{model_name(m)} ({r})" for m, r in state.excluded.items()) + ".")
     rev = a.get("revision")
     if rev:
         parts.append(f"Пересмотр относительно {rev['against']}: средн. абс. изменение {rev['mae']:.3f} за {rev['hours']} ч.")
-    parts.append(f"EN: capacity factor {_fmt_share(a.get('capacity_factor'))}, max 3 h ramp {_fmt_share(a.get('max_ramp_3h'))}, "
-                 f"confidence {a.get('confidence', 'n/a')}.")
-    return " ".join(parts)
+    text = " ".join(parts)
+    en = (f"_EN: capacity factor {_fmt_share(a.get('capacity_factor'))}, max 3 h ramp "
+          f"{_fmt_share(a.get('max_ramp_3h'))}, confidence {a.get('confidence', 'n/a')}._")
+    return text + "\n\n" + en
 
 
 class RulesPolicy:
