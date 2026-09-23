@@ -275,7 +275,8 @@ def check_for_updates(state: RunState) -> dict:
             continue
         newest_now = (state.as_of_utc - pd.Timedelta(hours=m["latency_h"])).floor("6h")
         if newest_now > pd.Timestamp(newest_used[m["id"]]):
-            updates.append({"model": m["id"], "published_run_utc": iso_z(newest_now), "used_run_utc": newest_used[m["id"]]})
+            updates.append({"model": m["id"], "published_run_utc": iso_z(newest_now),
+                            "published_run_data_clock": state.dc(newest_now), "used_run_utc": newest_used[m["id"]]})
     has = bool(updates)
     state.pending_reason = ("new runs: " + ", ".join(f"{u['model']} {u['published_run_utc']}" for u in updates)) if has else ""
     txt = f"At {state.dc(state.as_of_utc)}: " + (f"{len(updates)} model(s) published newer runs." if has else "no newer runs.")

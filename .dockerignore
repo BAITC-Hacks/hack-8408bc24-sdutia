@@ -1,0 +1,14 @@
+.git
+.venv
+venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+outputs/**/live
+outputs/**/.ratelimit.json
+PLAN.md
+CODEX_*.md

@@ -45,10 +45,13 @@ class ForecastModel:
         pcs = []
         for col, iso in self.power_curves.items():
             name = col.replace("_ws100", "_pc")
+            if col not in X.columns:                 # model excluded by the agent / missing → NaN (handled natively)
+                X[col] = np.nan
             x = X[col].to_numpy(dtype=float)
             out = np.full(len(X), np.nan)
             ok = ~np.isnan(x)
-            out[ok] = iso.predict(x[ok])
+            if ok.any():
+                out[ok] = iso.predict(x[ok])
             X[name] = out
             pcs.append(name)
         if pcs:
@@ -108,7 +111,8 @@ class ForecastModel:
                 x = rows[col].to_numpy(dtype=float)
                 ok = ~np.isnan(x)
                 vals = np.full(len(rows), np.nan)
-                vals[ok] = self.power_curves[col].predict(x[ok])
+                if ok.any():
+                    vals[ok] = self.power_curves[col].predict(x[ok])
                 res = pd.Series(np.where(ok, vals, res.to_numpy()), index=rows.index)
         return res
 

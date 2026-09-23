@@ -12,7 +12,7 @@ from .tools import TOOL_SPECS, RunState, call_tool
 
 MAX_STEPS = 14
 _DEFAULTS = {
-    "openai": {"key": "OPENAI_API_KEY", "model_var": "OPENAI_MODEL", "model": "gpt-4.1-mini", "base_url": None},
+    "openai": {"key": "OPENAI_API_KEY", "model_var": "OPENAI_MODEL", "model": "gpt-5.4-mini", "base_url": None},
     "nvidia": {"key": "NVIDIA_API_KEY", "model_var": "NVIDIA_MODEL", "model": "meta/llama-3.3-70b-instruct",
                "base_url": "https://integrate.api.nvidia.com/v1"},
 }
@@ -80,17 +80,27 @@ class LLMPolicy:
         self.p = provider
         self.provider, self.model = provider["provider"], provider["model"]
         self.client = _client(provider)
+        self._temperature_ok = not str(self.model).startswith(("gpt-5", "gpt-6", "o1", "o3", "o4"))
         self.messages: list[dict] = []
         self.tools = [{"type": "function", "function": s} for s in TOOL_SPECS]
 
     def _loop(self, state: RunState, tracer, stop_on_publish: bool = True) -> bool:
         published = False
         for _ in range(MAX_STEPS):
+            kwargs = dict(model=self.model, messages=self.messages, tools=self.tools, tool_choice="auto")
+            if self._temperature_ok:
+                kwargs["temperature"] = 0.2
             try:
-                resp = self.client.chat.completions.create(model=self.model, messages=self.messages, tools=self.tools,
-                                                           tool_choice="auto", temperature=0.2)
+                resp = self.client.chat.completions.create(**kwargs)
             except Exception as exc:  # noqa: BLE001 - any provider error → fallback
-                raise LLMUnavailable(f"{self.provider}/{self.model}: {type(exc).__name__}: {str(exc)[:200]}") from exc
+                if self._temperature_ok and "temperature" in str(exc).lower():
+                    self._temperature_ok = False          # reasoning models accept only the default temperature
+                    try:
+                        resp = self.client.chat.completions.create(**{k: v for k, v in kwargs.items() if k != "temperature"})
+                    except Exception as exc2:  # noqa: BLE001
+                        raise LLMUnavailable(f"{self.provider}/{self.model}: {type(exc2).__name__}: {str(exc2)[:200]}") from exc2
+                else:
+                    raise LLMUnavailable(f"{self.provider}/{self.model}: {type(exc).__name__}: {str(exc)[:200]}") from exc
             msg = resp.choices[0].message
             calls = msg.tool_calls or []
             entry = {"role": "assistant", "content": msg.content or ""}

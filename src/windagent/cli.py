@@ -140,10 +140,22 @@ def _cmd_detect_clock(args) -> int:
     return 0
 
 
-def _not_ready(name: str):
-    def run(_args):
-        raise WindAgentError(f"Command '{name}' is under construction in this build.")
-    return run
+def _cmd_report(args) -> int:
+    from . import config
+    from .report import render, update_readme
+
+    for fname, lang in (("README.md", "ru"), ("README.en.md", "en")):
+        ok = update_readme(config.REPO_ROOT / fname, render(args.site, lang))
+        print(f"{fname}: {'updated' if ok else 'no METRICS markers (skipped)'}")
+    return 0
+
+
+def _cmd_compare(args) -> int:
+    from .report import compare
+
+    ok, msg = compare(args.a, args.b, args.atol)
+    print(("OK: " if ok else "MISMATCH: ") + msg)
+    return 0 if ok else 1
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -181,7 +193,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--actuals", action="append", metavar="TURBINE=PATH", help="repeat per turbine, e.g. --actuals t1=feb_t1.csv")
     sp.add_argument("--forecast", help="forecast CSV (default: outputs/<site>/test_period/submission_day_ahead.csv)")
     add("detect-clock", "SCADA clock-offset forensics", _cmd_detect_clock)
-    add("report", "insert metrics into README", _not_ready("report"))
+    add("report", "write the generated metrics block into README.md / README.en.md", _cmd_report)
+    sp = sub.add_parser("compare", help="compare two submission CSVs (CI reproducibility check)")
+    sp.add_argument("a")
+    sp.add_argument("b")
+    sp.add_argument("--atol", type=float, default=2e-4)
+    sp.set_defaults(handler=_cmd_compare)
     return p
 
 

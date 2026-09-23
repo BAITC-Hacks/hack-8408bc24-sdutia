@@ -1,0 +1,26 @@
+# docker compose up --build            → dashboard on http://localhost:8501
+# docker compose run --rm pipeline     → regenerate validation + model + February backtest (offline, rules policy)
+services:
+  app:
+    build: .
+    image: windagent:latest
+    ports:
+      - "8501:8501"
+    env_file:
+      - path: .env
+        required: false
+    restart: unless-stopped
+
+  pipeline:
+    image: windagent:latest
+    build: .
+    profiles: ["pipeline"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - WINDAGENT_OFFLINE=1
+    command: ["python", "-m", "windagent", "all", "--offline", "--policy", "rules"]
+    volumes:
+      - ./outputs:/app/outputs
+      - ./models:/app/models

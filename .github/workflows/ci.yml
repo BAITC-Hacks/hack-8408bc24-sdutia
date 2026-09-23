@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  WINDAGENT_OFFLINE: "1"
+  PYTHONIOENCODING: utf-8
+
+jobs:
+  tests:
+    name: tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: pytest -q
+
+  reproduce:
+    name: reproduce the February forecast from a clean checkout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Re-run the 29-issue backtest offline with the rules policy into a fresh folder
+        run: WINDAGENT_OUTPUTS_DIR=/tmp/repro python -m windagent backtest --offline --policy rules
+      - name: Compare with the committed submission (forecast numbers must match)
+        run: python -m windagent compare outputs/shelek/test_period/submission_day_ahead.csv /tmp/repro/shelek/test_period/submission_day_ahead.csv
+      - name: Clock forensics reproduce the UTC+6 finding
+        run: python -m windagent detect-clock
+
+  docker:
+    name: docker image builds and serves the app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t windagent .
+      - run: |
+          docker run -d --name wa -p 8501:8501 windagent
+          for i in $(seq 1 30); do curl -fsS http://localhost:8501/_stcore/health && exit 0; sleep 3; done
+          docker logs wa; exit 1
